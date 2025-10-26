@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 )
 
-// Geist Design System monochrome palette (https://vercel.com/geist/colors)
+// Geist Design System monochrome palette[](https://vercel.com/geist/colors)
 var (
 	// Backgrounds
 	GeistBackground1 = color.RGBA{R: 0, G: 0, B: 0, A: 255}      // #000000 - Default element background
@@ -55,6 +55,7 @@ func (t *MovieStreamTheme) IsDark() bool {
 // SetDark sets the theme to dark or light mode
 func (t *MovieStreamTheme) SetDark(dark bool) {
 	t.isDark = dark
+	// Note: Theme preference is managed by Fyne's built-in theme system
 }
 
 func (t *MovieStreamTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
@@ -62,21 +63,21 @@ func (t *MovieStreamTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVar
 	case theme.ColorNameBackground:
 		return GeistBackground1
 	case theme.ColorNameButton:
-		return GeistGray7 // High contrast background for buttons
+		return GeistGray1 // Default component background for buttons
 	case theme.ColorNameDisabledButton:
-		return GeistGray1 // Darker for disabled state
+		return GeistBackground1 // Darker background for disabled buttons
 	case theme.ColorNameForeground:
 		return GeistGray10 // Primary text and icons
 	case theme.ColorNameDisabled:
 		return GeistGray9 // Secondary text for disabled state
 	case theme.ColorNameHover:
-		return GeistGray8 // Brighter hover for high contrast buttons
+		return GeistGray2 // Hover background for buttons and interactive elements
 	case theme.ColorNamePressed:
-		return GeistGray6 // Slightly darker when pressed
+		return GeistGray3 // Active (pressed) background for buttons
 	case theme.ColorNameInputBackground:
 		return GeistGray1 // Component default background
 	case theme.ColorNamePrimary:
-		return GeistGray10 // Primary text and icons (white)
+		return GeistGray4 // Darker accent for primary elements (e.g., primary button background)
 	case theme.ColorNameFocus:
 		return GeistGray10 // High contrast white for focus
 	case theme.ColorNameSelection:
@@ -158,11 +159,11 @@ func GetSecondaryTextColor() color.Color {
 }
 
 func GetPrimaryColor() color.Color {
-	return GeistGray10
+	return GeistGray4 // Updated to match theme primary
 }
 
 func GetAccentColor() color.Color {
-	return GeistGray10
+	return GeistGray4
 }
 
 func GetSuccessColor() color.Color {
@@ -176,4 +177,3 @@ func GetWarningColor() color.Color {
 func GetErrorColor() color.Color {
 	return GeistGray9
 }
-
