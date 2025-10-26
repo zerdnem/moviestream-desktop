@@ -15,8 +15,8 @@ import (
 func ShowSettingsDialog() {
 	currentSettings := settings.Get()
 	
-	// Video Player selector
-	videoPlayerLabel := widget.NewLabelWithStyle("Video Player:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	// Modern video player section header
+	videoPlayerLabel := CreateHeader("Video Player")
 	
 	// Get all available players
 	allPlayers := player.GetAvailablePlayers()
@@ -56,10 +56,10 @@ func ShowSettingsDialog() {
 		playerSelect.SetSelected(playerOptions[selectedIndex])
 	}
 	
-	// Player info text
+	// Compact player info text
 	var playerInfoText string
 	if len(installedPlayers) == 0 {
-		playerInfoText = "⚠ No video players detected! Please install MPV, VLC, or another supported player."
+		playerInfoText = "⚠ No video players detected"
 	} else {
 		detectedPlayerNames := ""
 		for i, p := range installedPlayers {
@@ -73,28 +73,28 @@ func ShowSettingsDialog() {
 	playerInfo := widget.NewLabel(playerInfoText)
 	playerInfo.Wrapping = fyne.TextWrapWord
 	
-	// Subtitle language selector
-	subtitleLabel := widget.NewLabel("Subtitle Language:")
+	// Modern subtitle language section
+	subtitleLabel := CreateHeader("Subtitle Language")
 	languageOptions := settings.GetLanguageOptions()
 	subtitleSelect := widget.NewSelect(languageOptions, nil)
 	subtitleSelect.SetSelected(settings.GetLanguageDisplayString(currentSettings.SubtitleLanguage))
 	
-	// Audio language selector
-	audioLabel := widget.NewLabel("Audio Language:")
+	// Modern audio language section
+	audioLabel := CreateHeader("Audio Language")
 	audioSelect := widget.NewSelect(languageOptions, nil)
 	audioSelect.SetSelected(settings.GetLanguageDisplayString(currentSettings.AudioLanguage))
 	
-	// Auto-next toggle
-	autoNextLabel := widget.NewLabel("Auto-play Next Episode:")
-	autoNextCheck := widget.NewCheck("", nil)
+	// Modern auto-next toggle
+	autoNextLabel := CreateHeader("Auto-play Next Episode")
+	autoNextCheck := widget.NewCheck("Enable auto-play", nil)
 	autoNextCheck.SetChecked(currentSettings.AutoNext)
 	
-	// Info text
-	infoText := widget.NewLabel("These settings will be applied when playing content.")
+	// Compact info text
+	infoText := widget.NewLabel("Settings apply when playing content")
 	infoText.Wrapping = fyne.TextWrapWord
 	
-	// Save button
-	saveBtn := widget.NewButton("Save", func() {
+	// Modern save button
+	saveBtn := CreateIconButtonWithImportance("Save Settings", "", widget.HighImportance, func() {
 		// Find selected player ID
 		selectedPlayerID := currentSettings.VideoPlayer
 		selectedIdx := -1
@@ -116,10 +116,10 @@ func ShowSettingsDialog() {
 		}
 		
 		settings.Save(newSettings)
-		dialog.ShowInformation("Success", "Settings saved successfully!", currentWindow)
+		dialog.ShowInformation("Success", "✓ Settings saved successfully!", currentWindow)
 	})
 	
-	// Update form with buttons
+	// Compact form layout
 	formWithButtons := container.NewVBox(
 		videoPlayerLabel,
 		playerSelect,
@@ -131,16 +131,17 @@ func ShowSettingsDialog() {
 		audioLabel,
 		audioSelect,
 		widget.NewSeparator(),
-		container.NewHBox(autoNextLabel, autoNextCheck),
+		autoNextLabel,
+		autoNextCheck,
 		widget.NewSeparator(),
 		infoText,
 		widget.NewSeparator(),
 		saveBtn,
 	)
 	
-	// Create custom dialog
+	// Create modern custom dialog
 	customDialog := dialog.NewCustom("Settings", "Close", formWithButtons, currentWindow)
-	customDialog.Resize(fyne.NewSize(450, 500))
+	customDialog.Resize(fyne.NewSize(420, 480))
 	customDialog.Show()
 }
 

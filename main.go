@@ -14,6 +14,9 @@ func main() {
 	// Use NewWithID to fix preferences API warning
 	myApp := app.NewWithID("com.moviestream.app")
 	
+	// Apply Warp Dark theme
+	myApp.Settings().SetTheme(gui.GetCurrentTheme())
+	
 	// Initialize settings system
 	settings.Initialize(myApp)
 	
@@ -21,12 +24,12 @@ func main() {
 	queue.Initialize(myApp)
 	history.Initialize(myApp)
 	
-	myWindow := myApp.NewWindow("MovieStream - Movies & TV Shows")
+	myWindow := myApp.NewWindow("MovieStream")
 	
 	// Create and show the main GUI
 	gui.CreateMainUI(myWindow)
 	
-	myWindow.Resize(fyne.NewSize(1000, 700))
+	myWindow.Resize(fyne.NewSize(900, 650))
 	myWindow.CenterOnScreen()
 	myWindow.ShowAndRun()
 }

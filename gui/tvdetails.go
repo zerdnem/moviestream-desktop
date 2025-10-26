@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
 	"moviestream-gui/history"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -67,25 +65,29 @@ func showTVDetails(tvShow api.TVShow) {
 
 // showTVDetailsUI displays the TV show details with seasons and episodes
 func showTVDetailsUI(tvDetails *api.TVDetails) {
-	// Title
-	titleText := canvas.NewText(tvDetails.Name, color.RGBA{R: 255, G: 255, B: 255, A: 255})
-	titleText.TextSize = 20
-	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	// Modern back button
+	backBtn := CreateIconButton("Back", IconBack, func() {
+		GoBackToSearch()
+	})
+	backBtn.Importance = widget.LowImportance
+
+	// Modern title with accent color
+	titleText := CreateTitle(IconTV + " " + tvDetails.Name)
 	titleText.Alignment = fyne.TextAlignCenter
 
-	// Info
-	infoText := fmt.Sprintf("First Air Date: %s\nRating: %.1f/10\nSeasons: %d",
-		tvDetails.FirstAirDate, tvDetails.VoteAverage, len(tvDetails.Seasons))
+	// Compact info with icons
+	rating := fmt.Sprintf("⭐ %.1f/10", tvDetails.VoteAverage)
+	if tvDetails.VoteAverage == 0 {
+		rating = "⭐ N/A"
+	}
+	infoText := fmt.Sprintf("%s | %s %s | %d Seasons",
+		rating, IconCalendar, tvDetails.FirstAirDate, len(tvDetails.Seasons))
 	infoLabel := widget.NewLabel(infoText)
+	infoLabel.Alignment = fyne.TextAlignCenter
 
 	// Overview
 	overviewLabel := widget.NewLabel(tvDetails.Overview)
 	overviewLabel.Wrapping = fyne.TextWrapWord
-
-	// Back button
-	backBtn := widget.NewButton("← Back to Search", func() {
-		GoBackToSearch()
-	})
 
 	// Season selector
 	var seasonOptions []string
@@ -103,13 +105,14 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 			backBtn,
 			widget.NewSeparator(),
 			container.NewCenter(titleText),
-			infoLabel,
+			container.NewCenter(infoLabel),
 			widget.NewSeparator(),
+			CreateHeader("Overview"),
 			overviewLabel,
 			widget.NewSeparator(),
 			widget.NewLabel("No seasons available"),
 		)
-		currentWindow.SetContent(container.NewVScroll(content))
+		currentWindow.SetContent(container.NewPadded(container.NewVScroll(content)))
 		return
 	}
 
@@ -131,23 +134,24 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 
 	// Episodes scroll container
 	episodesScroll := container.NewVScroll(episodesList)
-	episodesScroll.SetMinSize(fyne.NewSize(400, 300))
 
+	// Compact content layout
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
 		container.NewCenter(titleText),
-		infoLabel,
+		container.NewCenter(infoLabel),
 		widget.NewSeparator(),
+		CreateHeader("Overview"),
 		overviewLabel,
 		widget.NewSeparator(),
-		widget.NewLabelWithStyle("Select Season:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		CreateHeader("Episodes"),
 		seasonSelect,
 		widget.NewSeparator(),
 		episodesScroll,
 	)
 
-	currentWindow.SetContent(container.NewVScroll(content))
+	currentWindow.SetContent(container.NewPadded(container.NewVScroll(content)))
 }
 
 // loadEpisodes loads and displays episodes for a specific season
@@ -184,28 +188,33 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 			for _, episode := range season.Episodes {
 				ep := episode // Capture for closure
 				
-				// Episode card
+				// Modern compact episode card
 				episodeTitle := fmt.Sprintf("E%d: %s", ep.EpisodeNumber, ep.Name)
 				titleLabel := widget.NewLabelWithStyle(episodeTitle, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 				
-				overviewLabel := widget.NewLabel(ep.Overview)
+				// Truncate overview for compact display
+				overview := ep.Overview
+				if len(overview) > 120 {
+					overview = overview[:117] + "..."
+				}
+				overviewLabel := widget.NewLabel(overview)
 				overviewLabel.Wrapping = fyne.TextWrapWord
 
-				// Watch button
-				watchBtn := widget.NewButton("▶ Watch", func() {
+				// Modern action buttons
+				watchBtn := CreateIconButtonWithImportance("Watch", IconPlay, widget.HighImportance, func() {
 					watchEpisodeWithAutoNext(tvID, seasonNum, ep.EpisodeNumber, showName, ep.Name, len(season.Episodes))
 				})
 
-				// Download button
-				downloadBtn := widget.NewButton("⬇ Download", func() {
+				downloadBtn := CreateIconButton("Download", IconDownload, func() {
 					downloadEpisode(tvID, seasonNum, ep.EpisodeNumber, showName, ep.Name)
 				})
 
-				// Add to Queue button
-				addToQueueBtn := widget.NewButton("➕ Add to Queue", func() {
+				addToQueueBtn := CreateIconButton("Queue", IconAdd, func() {
 					addEpisodeToQueue(tvID, showName, seasonNum, ep.EpisodeNumber, ep.Name)
 				})
+				addToQueueBtn.Importance = widget.LowImportance
 
+				// Compact button layout
 				buttonContainer := container.NewVBox(
 					container.NewGridWithColumns(2, watchBtn, downloadBtn),
 					addToQueueBtn,
@@ -383,87 +392,97 @@ func playNextEpisode() {
 	}
 
 	autoNextInProgress = true // Prevent multiple triggers
-	fmt.Printf("🔄 Auto-next: Preparing next episode...\n")
+	fmt.Printf("🔄 Auto-next: Preparing next episode (Current: S%dE%d)...\n", currentSeason, currentEpisode)
 	
-	nextEpisode := currentEpisode + 1
-	nextSeason := currentSeason
+	// Get current season details from cache
+	cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, currentSeason)
+	seasonDetails, exists := seasonDetailsCache[cacheKey]
+	
+	if !exists || len(seasonDetails.Episodes) == 0 {
+		fmt.Printf("⚠ Auto-next: Season details not found in cache\n")
+		autoNextInProgress = false
+		return
+	}
 
-	// Check if we need to move to the next season
-	if nextEpisode > totalEpisodes {
-		nextSeason++
-		nextEpisode = 1
+	// Find the current episode in the list
+	currentEpisodeIndex := -1
+	for i, ep := range seasonDetails.Episodes {
+		if ep.EpisodeNumber == currentEpisode {
+			currentEpisodeIndex = i
+			break
+		}
+	}
+
+	if currentEpisodeIndex == -1 {
+		fmt.Printf("⚠ Auto-next: Could not find current episode S%dE%d in episode list\n", currentSeason, currentEpisode)
+		autoNextInProgress = false
+		return
+	}
+
+	// Check if there's a next episode in the current season
+	if currentEpisodeIndex + 1 < len(seasonDetails.Episodes) {
+		// Play next episode in current season
+		nextEp := seasonDetails.Episodes[currentEpisodeIndex + 1]
+		currentEpisode = nextEp.EpisodeNumber
 		
-		// Try to load next season details
-		cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, nextSeason)
-		if seasonDetails, exists := seasonDetailsCache[cacheKey]; exists && len(seasonDetails.Episodes) > 0 {
-			totalEpisodes = len(seasonDetails.Episodes)
-		} else {
-			// Try to fetch next season
-			go func() {
-				season, err := api.GetSeasonDetails(currentTVShowID, nextSeason)
-				if err != nil || len(season.Episodes) == 0 {
-					// No more episodes
-					fmt.Printf("Auto-next: End of series\n")
-					return
-				}
-				cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, nextSeason)
-				seasonDetailsCache[cacheKey] = season
-				totalEpisodes = len(season.Episodes)
-				currentSeason = nextSeason
-				currentEpisode = nextEpisode
-				
-				// Play first episode of next season
-				if len(season.Episodes) > 0 {
-					ep := season.Episodes[0]
-					fmt.Printf("▶ Auto-next: Will move to next season - S%dE%d - %s\n", nextSeason, ep.EpisodeNumber, ep.Name)
-					
-					// Show countdown with new season indication (includes season info in episode name)
-					newSeasonEpisodeName := fmt.Sprintf("🎬 NEW SEASON! - %s", ep.Name)
-					showAutoNextCountdown(currentTVShowID, nextSeason, ep.EpisodeNumber, currentShowName, newSeasonEpisodeName)
-				} else {
-					// No episodes in next season
-					autoNextInProgress = false
-					fyne.Do(func() {
-						dialog.ShowInformation("Auto-Next", "End of series reached.", currentWindow)
-					})
-				}
-			}()
+		fmt.Printf("▶ Auto-next: Next episode in season - S%dE%d - %s\n", currentSeason, nextEp.EpisodeNumber, nextEp.Name)
+		showAutoNextCountdown(currentTVShowID, currentSeason, nextEp.EpisodeNumber, currentShowName, nextEp.Name)
+		return
+	}
+
+	// No more episodes in current season, try next season
+	fmt.Printf("🔄 Auto-next: End of season %d, checking for season %d...\n", currentSeason, currentSeason+1)
+	nextSeason := currentSeason + 1
+	
+	// Try to load next season details
+	nextSeasonKey := fmt.Sprintf("%d-%d", currentTVShowID, nextSeason)
+	if nextSeasonDetails, exists := seasonDetailsCache[nextSeasonKey]; exists && len(nextSeasonDetails.Episodes) > 0 {
+		// Next season is cached, play first episode
+		firstEp := nextSeasonDetails.Episodes[0]
+		currentSeason = nextSeason
+		currentEpisode = firstEp.EpisodeNumber
+		totalEpisodes = len(nextSeasonDetails.Episodes)
+		
+		fmt.Printf("▶ Auto-next: Moving to next season - S%dE%d - %s\n", nextSeason, firstEp.EpisodeNumber, firstEp.Name)
+		newSeasonEpisodeName := fmt.Sprintf("🎬 NEW SEASON! - %s", firstEp.Name)
+		showAutoNextCountdown(currentTVShowID, nextSeason, firstEp.EpisodeNumber, currentShowName, newSeasonEpisodeName)
+		return
+	}
+
+	// Next season not cached, try to fetch it
+	go func() {
+		season, err := api.GetSeasonDetails(currentTVShowID, nextSeason)
+		if err != nil || len(season.Episodes) == 0 {
+			// No more seasons/episodes
+			fmt.Printf("⚠ Auto-next: No more seasons available (tried season %d)\n", nextSeason)
+			autoNextInProgress = false
+			
+			// Try to play from queue instead
+			q := queue.Get()
+			if !q.IsEmpty() {
+				fmt.Println("📋 Auto-next ended, checking queue...")
+				playNextInQueue()
+			} else {
+				fyne.Do(func() {
+					dialog.ShowInformation("Auto-Next", "End of series reached.", currentWindow)
+				})
+			}
 			return
 		}
-	}
-
-	// Update tracking
-	currentSeason = nextSeason
-	currentEpisode = nextEpisode
-
-	// Get episode details from cache
-	cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, currentSeason)
-	if seasonDetails, exists := seasonDetailsCache[cacheKey]; exists {
-		for _, ep := range seasonDetails.Episodes {
-			if ep.EpisodeNumber == nextEpisode {
-				fmt.Printf("▶ Auto-next: Will play S%dE%d - %s in 5 seconds...\n", nextSeason, nextEpisode, ep.Name)
-				
-				// Show countdown notification with cancel option
-				showAutoNextCountdown(currentTVShowID, nextSeason, nextEpisode, currentShowName, ep.Name)
-				return
-			}
-		}
-	}
-
-	fmt.Printf("⚠ Auto-next: Could not find next episode\n")
-	autoNextInProgress = false
-	
-	// Try to play from queue instead
-	q := queue.Get()
-	if !q.IsEmpty() {
-		fmt.Println("📋 Auto-next ended, checking queue...")
-		playNextInQueue()
-	} else {
-		// Show notification that auto-next couldn't continue
-		fyne.Do(func() {
-			dialog.ShowInformation("Auto-Next", "No more episodes available.", currentWindow)
-		})
-	}
+		
+		// Cache the next season
+		seasonDetailsCache[nextSeasonKey] = season
+		
+		// Play first episode of next season
+		firstEp := season.Episodes[0]
+		currentSeason = nextSeason
+		currentEpisode = firstEp.EpisodeNumber
+		totalEpisodes = len(season.Episodes)
+		
+		fmt.Printf("▶ Auto-next: Fetched next season - S%dE%d - %s\n", nextSeason, firstEp.EpisodeNumber, firstEp.Name)
+		newSeasonEpisodeName := fmt.Sprintf("🎬 NEW SEASON! - %s", firstEp.Name)
+		showAutoNextCountdown(currentTVShowID, nextSeason, firstEp.EpisodeNumber, currentShowName, newSeasonEpisodeName)
+	}()
 }
 
 // showAutoNextCountdown shows a countdown dialog with cancel option before auto-next

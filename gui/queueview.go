@@ -15,13 +15,14 @@ func ShowQueueView() {
 	q := queue.Get()
 	items := q.GetAll()
 
-	// Back button
-	backBtn := widget.NewButton("← Back to Search", func() {
+	// Modern back button
+	backBtn := CreateIconButton("Back", IconBack, func() {
 		GoBackToSearch()
 	})
+	backBtn.Importance = widget.LowImportance
 
-	// Clear queue button
-	clearBtn := widget.NewButton("Clear Queue", func() {
+	// Modern clear queue button
+	clearBtn := CreateIconButton("Clear Queue", IconDelete, func() {
 		if q.IsEmpty() {
 			dialog.ShowInformation("Queue Empty", "The queue is already empty.", currentWindow)
 			return
@@ -35,50 +36,59 @@ func ShowQueueView() {
 			}
 		}, currentWindow)
 	})
+	clearBtn.Importance = widget.DangerImportance
 
-	// Header
+	// Modern header with accent color
+	title := CreateTitle(fmt.Sprintf("%s Queue (%d)", IconQueue, len(items)))
+	title.Alignment = fyne.TextAlignCenter
+
+	// Compact header layout
 	header := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		widget.NewLabelWithStyle(fmt.Sprintf("📋 Playback Queue (%d items)", len(items)), 
-			fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Italic: false}),
+		container.NewCenter(title),
 		widget.NewSeparator(),
 	)
 
-	// Queue items
+	// Queue items with modern styling
 	var itemWidgets []fyne.CanvasObject
 
 	if len(items) == 0 {
-		itemWidgets = append(itemWidgets, 
-			widget.NewLabel("Queue is empty"),
-			widget.NewLabel("Add movies or episodes to the queue to watch them in sequence."),
+		emptyMsg := container.NewCenter(
+			container.NewVBox(
+				widget.NewLabel(""),
+				CreateHeader("Queue is empty"),
+				widget.NewLabel("Add movies or episodes to watch them in sequence"),
+			),
 		)
+		itemWidgets = append(itemWidgets, emptyMsg)
 	} else {
 		for i, item := range items {
 			idx := i // Capture for closure
 			qItem := item // Capture for closure
 			
-			// Item display
+			// Compact item display
 			titleLabel := widget.NewLabelWithStyle(
 				fmt.Sprintf("%d. %s", idx+1, qItem.GetDisplayTitle()),
 				fyne.TextAlignLeading,
 				fyne.TextStyle{Bold: true},
 			)
 
-			// Remove button
-			removeBtn := widget.NewButton("Remove", func() {
-				q.RemoveAt(idx)
-				ShowQueueView() // Refresh view
-			})
-
-			// Play now button
-			playNowBtn := widget.NewButton("▶ Play Now", func() {
+			// Modern action buttons
+			playNowBtn := CreateIconButtonWithImportance("Play Now", IconPlay, widget.HighImportance, func() {
 				q.RemoveAt(idx)
 				playQueueItem(&qItem)
 			})
 
+			removeBtn := CreateIconButton("Remove", IconRemove, func() {
+				q.RemoveAt(idx)
+				ShowQueueView() // Refresh view
+			})
+			removeBtn.Importance = widget.DangerImportance
+
 			buttonContainer := container.NewGridWithColumns(2, playNowBtn, removeBtn)
 
+			// Modern card
 			itemCard := container.NewVBox(
 				titleLabel,
 				buttonContainer,
@@ -88,18 +98,17 @@ func ShowQueueView() {
 			itemWidgets = append(itemWidgets, itemCard)
 		}
 
-		// Add clear button at the bottom
-		itemWidgets = append(itemWidgets, clearBtn)
+		// Add clear button at the bottom with spacing
+		itemWidgets = append(itemWidgets, widget.NewSeparator(), clearBtn)
 	}
 
-	// Content
+	// Content with modern layout
 	content := container.NewVBox(itemWidgets...)
 	scrollContent := container.NewVScroll(content)
-	scrollContent.SetMinSize(fyne.NewSize(400, 500))
 
-	// Main layout
+	// Main layout with padding
 	mainLayout := container.NewBorder(
-		header,
+		container.NewPadded(header),
 		nil,
 		nil,
 		nil,

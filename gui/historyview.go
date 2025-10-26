@@ -15,13 +15,14 @@ func ShowHistoryView() {
 	h := history.Get()
 	items := h.GetAll()
 
-	// Back button
-	backBtn := widget.NewButton("← Back to Search", func() {
+	// Modern back button
+	backBtn := CreateIconButton("Back", IconBack, func() {
 		GoBackToSearch()
 	})
+	backBtn.Importance = widget.LowImportance
 
-	// Clear history button
-	clearBtn := widget.NewButton("Clear History", func() {
+	// Modern clear history button
+	clearBtn := CreateIconButton("Clear History", IconDelete, func() {
 		if len(items) == 0 {
 			dialog.ShowInformation("History Empty", "The watch history is already empty.", currentWindow)
 			return
@@ -35,22 +36,26 @@ func ShowHistoryView() {
 			}
 		}, currentWindow)
 	})
+	clearBtn.Importance = widget.DangerImportance
 
-	// Continue watching button (for last watched show)
+	// Modern continue watching button (for last watched show)
 	var continueWatchingBtn *widget.Button
 	if lastShow, ok := h.GetLastWatchedShow(); ok {
-		continueWatchingBtn = widget.NewButton("▶ Continue Watching", func() {
+		continueWatchingBtn = CreateIconButtonWithImportance("Continue Watching", IconPlay, widget.HighImportance, func() {
 			// Navigate to the episode or show
 			watchEpisodeWithAutoNext(lastShow.TMDBID, lastShow.Season, lastShow.Episode, lastShow.Title, lastShow.EpisodeName, 0)
 		})
 	}
 
-	// Header
+	// Modern header with accent color
+	title := CreateTitle(fmt.Sprintf("%s History (%d)", IconHistory, len(items)))
+	title.Alignment = fyne.TextAlignCenter
+
+	// Compact header layout
 	headerWidgets := []fyne.CanvasObject{
 		backBtn,
 		widget.NewSeparator(),
-		widget.NewLabelWithStyle(fmt.Sprintf("🕒 Watch History (%d items)", len(items)), 
-			fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		container.NewCenter(title),
 	}
 
 	if continueWatchingBtn != nil {
@@ -61,30 +66,35 @@ func ShowHistoryView() {
 
 	header := container.NewVBox(headerWidgets...)
 
-	// History items
+	// History items with modern styling
 	var itemWidgets []fyne.CanvasObject
 
 	if len(items) == 0 {
-		itemWidgets = append(itemWidgets, 
-			widget.NewLabel("No watch history"),
-			widget.NewLabel("Start watching movies or TV shows to see them here."),
+		emptyMsg := container.NewCenter(
+			container.NewVBox(
+				widget.NewLabel(""),
+				CreateHeader("No watch history"),
+				widget.NewLabel("Start watching movies or TV shows to see them here"),
+			),
 		)
+		itemWidgets = append(itemWidgets, emptyMsg)
 	} else {
 		for i, item := range items {
 			idx := i // Capture for closure
 			hItem := item // Capture for closure
 			
-			// Item display
+			// Compact item display
 			titleLabel := widget.NewLabelWithStyle(
 				hItem.GetDisplayTitle(),
 				fyne.TextAlignLeading,
 				fyne.TextStyle{Bold: true},
 			)
 
-			timeLabel := widget.NewLabel(fmt.Sprintf("Watched: %s", hItem.GetDisplayTime()))
+			// Compact time display
+			timeLabel := widget.NewLabel(hItem.GetDisplayTime())
 
-			// Watch again button
-			watchAgainBtn := widget.NewButton("▶ Watch Again", func() {
+			// Modern action buttons
+			watchAgainBtn := CreateIconButtonWithImportance("Watch Again", IconPlay, widget.HighImportance, func() {
 				if hItem.Type == "movie" {
 					watchMovieByID(hItem.TMDBID, hItem.Title)
 				} else {
@@ -92,14 +102,15 @@ func ShowHistoryView() {
 				}
 			})
 
-			// Remove button
-			removeBtn := widget.NewButton("Remove", func() {
+			removeBtn := CreateIconButton("Remove", IconRemove, func() {
 				h.Remove(idx)
 				ShowHistoryView() // Refresh view
 			})
+			removeBtn.Importance = widget.DangerImportance
 
 			buttonContainer := container.NewGridWithColumns(2, watchAgainBtn, removeBtn)
 
+			// Modern card
 			itemCard := container.NewVBox(
 				titleLabel,
 				timeLabel,
@@ -110,18 +121,17 @@ func ShowHistoryView() {
 			itemWidgets = append(itemWidgets, itemCard)
 		}
 
-		// Add clear button at the bottom
-		itemWidgets = append(itemWidgets, clearBtn)
+		// Add clear button at the bottom with spacing
+		itemWidgets = append(itemWidgets, widget.NewSeparator(), clearBtn)
 	}
 
-	// Content
+	// Content with modern layout
 	content := container.NewVBox(itemWidgets...)
 	scrollContent := container.NewVScroll(content)
-	scrollContent.SetMinSize(fyne.NewSize(400, 500))
 
-	// Main layout
+	// Main layout with padding
 	mainLayout := container.NewBorder(
-		header,
+		container.NewPadded(header),
 		nil,
 		nil,
 		nil,

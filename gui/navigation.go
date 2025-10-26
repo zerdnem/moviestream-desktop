@@ -1,13 +1,11 @@
 package gui
 
 import (
-	"fmt"
-	"image/color"
 	"moviestream-gui/player"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -24,17 +22,45 @@ func GoBackToSearch() {
 
 // createMainUIWithResults recreates the main UI and populates it with the last search results
 func createMainUIWithResults() {
-	// Title
-	title := canvas.NewText("MovieStream", color.RGBA{R: 255, G: 100, B: 100, A: 255})
-	title.TextSize = 24
-	title.TextStyle = fyne.TextStyle{Bold: true}
+	// HBO Max style large title
+	title := CreateLargeTitle("MovieStream")
+	title.Alignment = fyne.TextAlignLeading
+	
+	// Sleek navigation buttons
+	settingsBtn := CreateIconButton("", IconSettings, func() {
+		ShowSettingsDialog()
+	})
+	settingsBtn.Importance = widget.LowImportance
+	
+	queueBtn := CreateIconButton("", IconQueue, func() {
+		ShowQueueView()
+	})
+	queueBtn.Importance = widget.LowImportance
+	
+	historyBtn := CreateIconButton("", IconHistory, func() {
+		ShowHistoryView()
+	})
+	historyBtn.Importance = widget.LowImportance
+	
+	navButtons := container.NewHBox(
+		queueBtn,
+		historyBtn,
+		settingsBtn,
+	)
+	
+	// Spacious header bar
+	headerBar := container.NewBorder(
+		nil, nil,
+		container.NewPadded(title),
+		container.NewPadded(navButtons),
+	)
 
 	// Search input - restore previous search
 	if searchEntry == nil {
 		searchEntry = widget.NewEntry()
 	}
 	searchEntry.SetText(lastSearchQuery)
-	searchEntry.SetPlaceHolder("Search for movies or TV shows...")
+	searchEntry.SetPlaceHolder("Search thousands of movies and TV shows...")
 	searchEntry.OnSubmitted = func(query string) {
 		performSearch(query)
 	}
@@ -46,30 +72,25 @@ func createMainUIWithResults() {
 	}
 	contentTypeRadio.SetSelected(lastSearchContentType)
 
-	// Search button
-	searchBtn := widget.NewButton("Search", func() {
+	// Compact search button (icon only)
+	searchBtn := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		query := searchEntry.Text
 		if query != "" {
 			performSearch(query)
 		}
 	})
+	searchBtn.Importance = widget.HighImportance
 
-	// Settings button
-	settingsBtn := widget.NewButton("⚙ Settings", func() {
-		ShowSettingsDialog()
-	})
+	// Compact search bar with inline button
+	searchBar := container.NewBorder(nil, nil, nil, searchBtn, searchEntry)
 
-	// Queue button
-	queueBtn := widget.NewButton("📋 Queue", func() {
-		ShowQueueView()
-	})
+	// Modern search section with styling
+	searchSection := container.NewVBox(
+		contentTypeRadio,
+		searchBar,
+	)
 
-	// History button
-	historyBtn := widget.NewButton("🕒 History", func() {
-		ShowHistoryView()
-	})
-
-	// Video player status (simplified for back navigation)
+	// Minimal player status
 	playerStatus := widget.NewLabel("")
 	installedPlayers := player.GetInstalledPlayers()
 	if len(installedPlayers) > 0 {
@@ -80,23 +101,18 @@ func createMainUIWithResults() {
 			}
 			playerNames += p.Name
 		}
-		playerStatus.SetText(fmt.Sprintf("✓ Video Players: %s", playerNames))
+		playerStatus.SetText("✓ " + playerNames)
 		playerStatus.Importance = widget.SuccessImportance
 	} else {
-		playerStatus.SetText("⚠ No video player detected - Install MPV, VLC, or another supported player")
+		playerStatus.SetText("⚠ No video player detected")
 		playerStatus.Importance = widget.WarningImportance
 	}
 
-	// Search container
-	searchContainer := container.NewVBox(
-		container.NewCenter(title),
+	// Spacious top section
+	topSection := container.NewVBox(
+		headerBar,
 		widget.NewSeparator(),
-		widget.NewLabel("Select content type:"),
-		contentTypeRadio,
-		widget.NewLabel("Enter search query:"),
-		searchEntry,
-		container.NewGridWithColumns(2, searchBtn, settingsBtn),
-		container.NewGridWithColumns(2, queueBtn, historyBtn),
+		container.NewPadded(searchSection),
 		widget.NewSeparator(),
 		playerStatus,
 	)
@@ -107,15 +123,19 @@ func createMainUIWithResults() {
 		resultsWidget = createMovieResults(lastSearchMovies)
 	} else if lastSearchContentType == "TV Shows" && len(lastSearchTVShows) > 0 {
 		resultsWidget = createTVResults(lastSearchTVShows)
+	} else if len(lastSearchMovies) > 0 {
+		// Handle old format
+		resultsWidget = createMovieResults(lastSearchMovies)
+	} else if len(lastSearchTVShows) > 0 {
+		resultsWidget = createTVResults(lastSearchTVShows)
 	}
 
 	// Results scroll container
 	resultsScroll := container.NewVScroll(resultsWidget)
-	resultsScroll.SetMinSize(fyne.NewSize(400, 500))
 
-	// Main layout
+	// Main layout with generous padding
 	mainContainer = container.NewBorder(
-		searchContainer,
+		container.NewPadded(topSection),
 		nil,
 		nil,
 		nil,

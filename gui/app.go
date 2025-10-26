@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
 	"moviestream-gui/history"
@@ -10,9 +9,9 @@ import (
 	"moviestream-gui/queue"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -32,47 +31,70 @@ var (
 func CreateMainUI(window fyne.Window) {
 	currentWindow = window
 
-	// Title
-	title := canvas.NewText("MovieStream", color.RGBA{R: 255, G: 100, B: 100, A: 255})
-	title.TextSize = 24
-	title.TextStyle = fyne.TextStyle{Bold: true}
+	// HBO Max style large title
+	title := CreateLargeTitle("MovieStream")
+	title.Alignment = fyne.TextAlignLeading
+	
+	// Sleek navigation buttons
+	settingsBtn := CreateIconButton("", IconSettings, func() {
+		ShowSettingsDialog()
+	})
+	settingsBtn.Importance = widget.LowImportance
+	
+	queueBtn := CreateIconButton("", IconQueue, func() {
+		ShowQueueView()
+	})
+	queueBtn.Importance = widget.LowImportance
+	
+	historyBtn := CreateIconButton("", IconHistory, func() {
+		ShowHistoryView()
+	})
+	historyBtn.Importance = widget.LowImportance
+	
+	navButtons := container.NewHBox(
+		queueBtn,
+		historyBtn,
+		settingsBtn,
+	)
+	
+	// Spacious header bar
+	headerBar := container.NewBorder(
+		nil, nil,
+		container.NewPadded(title),
+		container.NewPadded(navButtons),
+	)
 
-	// Search input
-	searchEntry = widget.NewEntry()
-	searchEntry.SetPlaceHolder("Search for movies or TV shows...")
-	searchEntry.OnSubmitted = func(query string) {
-		performSearch(query)
-	}
-
-	// Content type selector
+	// Modern content type selector
 	contentTypeRadio = widget.NewRadioGroup([]string{"Movies", "TV Shows"}, nil)
 	contentTypeRadio.SetSelected("Movies")
 	contentTypeRadio.Horizontal = true
 
-	// Search button
-	searchBtn := widget.NewButton("Search", func() {
+	// Large search input
+	searchEntry = widget.NewEntry()
+	searchEntry.SetPlaceHolder("Search thousands of movies and TV shows...")
+	searchEntry.OnSubmitted = func(query string) {
+		performSearch(query)
+	}
+
+	// Compact search button (icon only)
+	searchBtn := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		query := searchEntry.Text
 		if query != "" {
 			performSearch(query)
 		}
 	})
+	searchBtn.Importance = widget.HighImportance
 
-	// Settings button
-	settingsBtn := widget.NewButton("⚙ Settings", func() {
-		ShowSettingsDialog()
-	})
+	// Compact search bar with inline button
+	searchBar := container.NewBorder(nil, nil, nil, searchBtn, searchEntry)
 
-	// Queue button
-	queueBtn := widget.NewButton("📋 Queue", func() {
-		ShowQueueView()
-	})
+	// Modern search section with styling
+	searchSection := container.NewVBox(
+		contentTypeRadio,
+		searchBar,
+	)
 
-	// History button
-	historyBtn := widget.NewButton("🕒 History", func() {
-		ShowHistoryView()
-	})
-
-	// Video player status check
+	// Minimal player status
 	playerStatus := widget.NewLabel("")
 	installedPlayers := player.GetInstalledPlayers()
 	if len(installedPlayers) > 0 {
@@ -83,37 +105,37 @@ func CreateMainUI(window fyne.Window) {
 			}
 			playerNames += p.Name
 		}
-		playerStatus.SetText(fmt.Sprintf("✓ Video Players: %s", playerNames))
+		playerStatus.SetText("✓ " + playerNames)
 		playerStatus.Importance = widget.SuccessImportance
 	} else {
-		playerStatus.SetText("⚠ No video player detected - Install MPV, VLC, or another supported player")
+		playerStatus.SetText("⚠ No video player detected")
 		playerStatus.Importance = widget.WarningImportance
 	}
 
-	// Search container
-	searchContainer := container.NewVBox(
-		container.NewCenter(title),
+	// Spacious top section
+	topSection := container.NewVBox(
+		headerBar,
 		widget.NewSeparator(),
-		widget.NewLabel("Select content type:"),
-		contentTypeRadio,
-		widget.NewLabel("Enter search query:"),
-		searchEntry,
-		container.NewGridWithColumns(2, searchBtn, settingsBtn),
-		container.NewGridWithColumns(2, queueBtn, historyBtn),
+		container.NewPadded(searchSection),
 		widget.NewSeparator(),
 		playerStatus,
 	)
 
-	// Results container (initially empty)
-	resultsContainer := container.NewVBox()
+	// Compact welcome section
+	heroTitle := CreateTitle("Discover Movies & TV Shows")
+	heroTitle.Alignment = fyne.TextAlignCenter
+	
+	resultsContainer := container.NewVBox(
+		widget.NewLabel(""),
+		container.NewCenter(heroTitle),
+	)
 
 	// Scroll container for results
 	scrollResults := container.NewVScroll(resultsContainer)
-	scrollResults.SetMinSize(fyne.NewSize(400, 500))
 
-	// Main layout
+	// Main layout with generous padding
 	mainContainer = container.NewBorder(
-		searchContainer,
+		container.NewPadded(topSection),
 		nil,
 		nil,
 		nil,
@@ -137,7 +159,10 @@ func performSearch(query string) {
 		var err error
 		var resultsWidget fyne.CanvasObject
 
-		if contentTypeRadio.Selected == "Movies" {
+		// Check if searching for movies or TV shows
+		isMovies := contentTypeRadio.Selected == "Movies"
+
+		if isMovies {
 			movies, searchErr := api.SearchMovies(query)
 			err = searchErr
 			if err == nil {
@@ -176,8 +201,6 @@ func performSearch(query string) {
 		// Update the main container with results (must be done on UI thread)
 		fyne.Do(func() {
 			resultsScroll := container.NewVScroll(resultsWidget)
-			resultsScroll.SetMinSize(fyne.NewSize(400, 500))
-
 			mainContainer.Objects[0] = resultsScroll
 			mainContainer.Refresh()
 		})
@@ -187,41 +210,65 @@ func performSearch(query string) {
 // createMovieResults creates the results list for movies
 func createMovieResults(movies []api.Movie) fyne.CanvasObject {
 	if len(movies) == 0 {
-		return widget.NewLabel("No movies found")
+		return container.NewCenter(
+			container.NewVBox(
+				widget.NewLabel(""),
+				CreateHeader("No movies found"),
+				widget.NewLabel("Try a different search term"),
+			),
+		)
 	}
 
 	var items []fyne.CanvasObject
 	
-	items = append(items, widget.NewLabelWithStyle(
-		fmt.Sprintf("Found %d movie(s)", len(movies)),
-		fyne.TextAlignLeading,
-		fyne.TextStyle{Bold: true},
-	))
-	items = append(items, widget.NewSeparator())
+	// HBO Max style section header
+	sectionTitle := CreateTitle(fmt.Sprintf("Movies • %d Results", len(movies)))
+	items = append(items, 
+		widget.NewLabel(""),
+		sectionTitle,
+		widget.NewLabel(""),
+	)
 
 	for _, movie := range movies {
 		m := movie // Capture for closure
 		
-		// Movie card
+		// Streaming service style card
 		titleLabel := widget.NewLabelWithStyle(m.Title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 		
-		infoText := fmt.Sprintf("Release: %s | Rating: %.1f/10", m.ReleaseDate, m.VoteAverage)
+		// Rating and year
+		rating := fmt.Sprintf("⭐ %.1f", m.VoteAverage)
+		if m.VoteAverage == 0 {
+			rating = "⭐ N/A"
+		}
+		year := ""
+		if len(m.ReleaseDate) >= 4 {
+			year = m.ReleaseDate[:4]
+		}
+		infoText := fmt.Sprintf("%s  •  %s", rating, year)
 		infoLabel := widget.NewLabel(infoText)
 		
-		overviewLabel := widget.NewLabel(m.Overview)
+		// Compact overview
+		overview := m.Overview
+		if len(overview) > 120 {
+			overview = overview[:117] + "..."
+		}
+		overviewLabel := widget.NewLabel(overview)
 		overviewLabel.Wrapping = fyne.TextWrapWord
 
-		detailsBtn := widget.NewButton("View Details", func() {
+		// Compact action buttons
+		watchBtn := CreateIconButtonWithImportance("Watch", IconPlay, widget.HighImportance, func() {
 			showMovieDetails(m)
 		})
 
-		card := container.NewVBox(
+		// Compact card with minimal spacing
+		cardContent := container.NewVBox(
 			titleLabel,
 			infoLabel,
 			overviewLabel,
-			detailsBtn,
-			widget.NewSeparator(),
+			watchBtn,
 		)
+		
+		card := CreateMovieCard(cardContent)
 
 		items = append(items, card)
 	}
@@ -232,41 +279,65 @@ func createMovieResults(movies []api.Movie) fyne.CanvasObject {
 // createTVResults creates the results list for TV shows
 func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 	if len(tvShows) == 0 {
-		return widget.NewLabel("No TV shows found")
+		return container.NewCenter(
+			container.NewVBox(
+				widget.NewLabel(""),
+				CreateHeader("No TV shows found"),
+				widget.NewLabel("Try a different search term"),
+			),
+		)
 	}
 
 	var items []fyne.CanvasObject
 	
-	items = append(items, widget.NewLabelWithStyle(
-		fmt.Sprintf("Found %d TV show(s)", len(tvShows)),
-		fyne.TextAlignLeading,
-		fyne.TextStyle{Bold: true},
-	))
-	items = append(items, widget.NewSeparator())
+	// HBO Max style section header
+	sectionTitle := CreateTitle(fmt.Sprintf("TV Shows • %d Results", len(tvShows)))
+	items = append(items, 
+		widget.NewLabel(""),
+		sectionTitle,
+		widget.NewLabel(""),
+	)
 
 	for _, show := range tvShows {
 		s := show // Capture for closure
 		
-		// TV show card
+		// Streaming service style card
 		titleLabel := widget.NewLabelWithStyle(s.Name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 		
-		infoText := fmt.Sprintf("First Air: %s | Rating: %.1f/10", s.FirstAirDate, s.VoteAverage)
+		// Rating and year
+		rating := fmt.Sprintf("⭐ %.1f", s.VoteAverage)
+		if s.VoteAverage == 0 {
+			rating = "⭐ N/A"
+		}
+		year := ""
+		if len(s.FirstAirDate) >= 4 {
+			year = s.FirstAirDate[:4]
+		}
+		infoText := fmt.Sprintf("%s  •  %s", rating, year)
 		infoLabel := widget.NewLabel(infoText)
 		
-		overviewLabel := widget.NewLabel(s.Overview)
+		// Compact overview
+		overview := s.Overview
+		if len(overview) > 120 {
+			overview = overview[:117] + "..."
+		}
+		overviewLabel := widget.NewLabel(overview)
 		overviewLabel.Wrapping = fyne.TextWrapWord
 
-		detailsBtn := widget.NewButton("View Episodes", func() {
+		// Compact action buttons
+		watchBtn := CreateIconButtonWithImportance("Episodes", IconPlay, widget.HighImportance, func() {
 			showTVDetails(s)
 		})
 
-		card := container.NewVBox(
+		// Compact card with minimal spacing
+		cardContent := container.NewVBox(
 			titleLabel,
 			infoLabel,
 			overviewLabel,
-			detailsBtn,
-			widget.NewSeparator(),
+			watchBtn,
 		)
+		
+		card := CreateMovieCard(cardContent)
 
 		items = append(items, card)
 	}
@@ -276,52 +347,63 @@ func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 
 // showMovieDetails shows detailed view for a movie with watch/download options
 func showMovieDetails(movie api.Movie) {
-	// Create details content
-	titleText := canvas.NewText(movie.Title, color.RGBA{R: 255, G: 255, B: 255, A: 255})
-	titleText.TextSize = 20
-	titleText.TextStyle = fyne.TextStyle{Bold: true}
-	titleText.Alignment = fyne.TextAlignCenter
+	// Sleek back button
+	backBtn := CreateIconButton(IconBack, "", func() {
+		GoBackToSearch()
+	})
+	backBtn.Importance = widget.LowImportance
 
-	infoText := fmt.Sprintf("Release Date: %s\nRating: %.1f/10", movie.ReleaseDate, movie.VoteAverage)
+	// Hero title section
+	titleText := CreateLargeTitle(movie.Title)
+	titleText.Alignment = fyne.TextAlignLeading
+
+	// Premium info display
+	rating := fmt.Sprintf("⭐ %.1f", movie.VoteAverage)
+	if movie.VoteAverage == 0 {
+		rating = "⭐ N/A"
+	}
+	year := ""
+	if len(movie.ReleaseDate) >= 4 {
+		year = movie.ReleaseDate[:4]
+	}
+	infoText := fmt.Sprintf("%s  •  %s  •  Movie", rating, year)
 	infoLabel := widget.NewLabel(infoText)
 
+	// Overview section
+	overviewTitle := CreateHeader("Overview")
 	overviewLabel := widget.NewLabel(movie.Overview)
 	overviewLabel.Wrapping = fyne.TextWrapWord
 
-	// Watch button
-	watchBtn := widget.NewButton("▶ Watch", func() {
+	// Premium action buttons - larger and more prominent
+	watchBtn := CreateIconButtonWithImportance("Watch Now", IconPlay, widget.HighImportance, func() {
 		watchMovie(movie)
 	})
 
-	// Download button
-	downloadBtn := widget.NewButton("⬇ Download", func() {
+	downloadBtn := CreateIconButton("Download", IconDownload, func() {
 		downloadMovie(movie)
 	})
 
-	// Add to Queue button
-	addToQueueBtn := widget.NewButton("➕ Add to Queue", func() {
+	addToQueueBtn := CreateIconButton("Add to Queue", IconAdd, func() {
 		addMovieToQueue(movie)
 	})
+	addToQueueBtn.Importance = widget.LowImportance
 
-	// Back button
-	backBtn := widget.NewButton("← Back to Search", func() {
-		GoBackToSearch()
-	})
-
+	// Compact layout
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		container.NewCenter(titleText),
+		titleText,
 		infoLabel,
+		watchBtn,
 		widget.NewSeparator(),
+		overviewTitle,
 		overviewLabel,
 		widget.NewSeparator(),
-		container.NewGridWithColumns(2, watchBtn, downloadBtn),
-		addToQueueBtn,
+		container.NewGridWithColumns(2, downloadBtn, addToQueueBtn),
 	)
 
 	scrollContent := container.NewVScroll(content)
-	currentWindow.SetContent(scrollContent)
+	currentWindow.SetContent(container.NewPadded(scrollContent))
 }
 
 // addMovieToQueue adds a movie to the playback queue
