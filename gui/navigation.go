@@ -22,9 +22,8 @@ func GoBackToSearch() {
 
 // createMainUIWithResults recreates the main UI and populates it with the last search results
 func createMainUIWithResults() {
-	// HBO Max style large title
-	title := CreateLargeTitle("MovieStream")
-	title.Alignment = fyne.TextAlignLeading
+	// Create logo instead of text title
+	logo := CreateAppLogo(180, 50)
 	
 	// Sleek navigation buttons
 	settingsBtn := CreateIconButton("", IconSettings, func() {
@@ -51,7 +50,7 @@ func createMainUIWithResults() {
 	// Spacious header bar
 	headerBar := container.NewBorder(
 		nil, nil,
-		container.NewPadded(title),
+		container.NewPadded(logo),
 		container.NewPadded(navButtons),
 	)
 

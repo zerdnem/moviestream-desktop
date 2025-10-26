@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"moviestream-gui/gui"
 	"moviestream-gui/history"
 	"moviestream-gui/queue"
@@ -26,6 +29,10 @@ func main() {
 	
 	myWindow := myApp.NewWindow("MovieStream")
 	
+	// Set application icon
+	iconImg := gui.CreateAppIcon()
+	myWindow.SetIcon(fyne.NewStaticResource("icon.png", iconToBytes(iconImg)))
+	
 	// Create and show the main GUI
 	gui.CreateMainUI(myWindow)
 	
@@ -34,3 +41,9 @@ func main() {
 	myWindow.ShowAndRun()
 }
 
+// iconToBytes converts an image to PNG bytes
+func iconToBytes(img image.Image) []byte {
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
+}

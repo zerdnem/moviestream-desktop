@@ -35,9 +35,8 @@ var (
 func CreateMainUI(window fyne.Window) {
 	currentWindow = window
 
-	// HBO Max style large title
-	title := CreateLargeTitle("MovieStream")
-	title.Alignment = fyne.TextAlignLeading
+	// Create logo instead of text title
+	logo := CreateAppLogo(180, 50)
 	
 	// Sleek navigation buttons
 	settingsBtn := CreateIconButton("", IconSettings, func() {
@@ -64,7 +63,7 @@ func CreateMainUI(window fyne.Window) {
 	// Spacious header bar
 	headerBar := container.NewBorder(
 		nil, nil,
-		container.NewPadded(title),
+		container.NewPadded(logo),
 		container.NewPadded(navButtons),
 	)
 
