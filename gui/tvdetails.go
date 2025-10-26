@@ -241,6 +241,35 @@ func addEpisodeToQueue(tvID int, showName string, season, episode int, episodeNa
 
 // watchEpisodeWithAutoNext starts playing an episode with auto-next support
 func watchEpisodeWithAutoNext(tvID, season, episode int, showName, episodeName string, totalEps int) {
+	// If totalEps is 0, we need to fetch it
+	if totalEps == 0 {
+		go func() {
+			// Try to get from cache first
+			cacheKey := fmt.Sprintf("%d-%d", tvID, season)
+			if seasonDetails, exists := seasonDetailsCache[cacheKey]; exists && len(seasonDetails.Episodes) > 0 {
+				// Use cached data
+				watchEpisodeWithAutoNextInternal(tvID, season, episode, showName, episodeName, len(seasonDetails.Episodes))
+			} else {
+				// Fetch season details
+				seasonDetails, err := api.GetSeasonDetails(tvID, season)
+				if err != nil || len(seasonDetails.Episodes) == 0 {
+					// If we can't get episode count, just play without proper auto-next tracking
+					fmt.Printf("⚠ Warning: Could not fetch season details for auto-next\n")
+					watchEpisodeWithAutoNextInternal(tvID, season, episode, showName, episodeName, 0)
+				} else {
+					// Cache it for future use
+					seasonDetailsCache[cacheKey] = seasonDetails
+					watchEpisodeWithAutoNextInternal(tvID, season, episode, showName, episodeName, len(seasonDetails.Episodes))
+				}
+			}
+		}()
+	} else {
+		watchEpisodeWithAutoNextInternal(tvID, season, episode, showName, episodeName, totalEps)
+	}
+}
+
+// watchEpisodeWithAutoNextInternal is the internal implementation with known episode count
+func watchEpisodeWithAutoNextInternal(tvID, season, episode int, showName, episodeName string, totalEps int) {
 	// Update current episode tracking
 	currentTVShowID = tvID
 	currentShowName = showName
@@ -248,6 +277,8 @@ func watchEpisodeWithAutoNext(tvID, season, episode int, showName, episodeName s
 	currentEpisode = episode
 	totalEpisodes = totalEps
 	autoNextInProgress = false // Reset the flag for new episode
+
+	fmt.Printf("📺 Auto-next tracking: S%dE%d (Total episodes in season: %d)\n", season, episode, totalEps)
 
 	watchEpisode(tvID, season, episode, showName, episodeName)
 }
