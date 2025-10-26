@@ -301,23 +301,19 @@ func createMovieGridView(movies []api.Movie) fyne.CanvasObject {
 		ratingLabel := widget.NewLabel(rating)
 		ratingLabel.Alignment = fyne.TextAlignCenter
 		
-		// Tappable card
+		// Create card content
 		cardContent := container.NewVBox(
 			posterImg,
 			titleLabel,
 			ratingLabel,
 		)
 		
-		// Create tappable container
-		tappable := widget.NewButton("", func() {
+		card := CreateMovieCard(cardContent)
+		
+		// Wrap in tappable container (no visible button styling)
+		itemCard := NewTappableCard(card, func() {
 			showMovieDetails(m)
 		})
-		tappable.Importance = widget.LowImportance
-		
-		itemCard := container.NewStack(
-			CreateMovieCard(cardContent),
-			container.NewPadded(tappable),
-		)
 		
 		gridItems = append(gridItems, itemCard)
 	}
@@ -448,23 +444,19 @@ func createTVGridView(tvShows []api.TVShow) fyne.CanvasObject {
 		ratingLabel := widget.NewLabel(rating)
 		ratingLabel.Alignment = fyne.TextAlignCenter
 		
-		// Tappable card
+		// Create card content
 		cardContent := container.NewVBox(
 			posterImg,
 			titleLabel,
 			ratingLabel,
 		)
 		
-		// Create tappable container
-		tappable := widget.NewButton("", func() {
+		card := CreateMovieCard(cardContent)
+		
+		// Wrap in tappable container (no visible button styling)
+		itemCard := NewTappableCard(card, func() {
 			showTVDetails(s)
 		})
-		tappable.Importance = widget.LowImportance
-		
-		itemCard := container.NewStack(
-			CreateMovieCard(cardContent),
-			container.NewPadded(tappable),
-		)
 		
 		gridItems = append(gridItems, itemCard)
 	}

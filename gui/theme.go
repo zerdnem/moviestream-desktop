@@ -77,11 +77,11 @@ func (t *MovieStreamTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVar
 	case theme.ColorNameInputBackground:
 		return GeistGray1 // Component default background
 	case theme.ColorNamePrimary:
-		return GeistGray4 // Darker accent for primary elements (e.g., primary button background)
+		return GeistGray10 // Primary text for selected items
 	case theme.ColorNameFocus:
 		return GeistGray10 // High contrast white for focus
 	case theme.ColorNameSelection:
-		return GeistGray7 // High contrast background
+		return GeistGray3 // Active background for selected items
 	case theme.ColorNameShadow:
 		return color.RGBA{R: 0, G: 0, B: 0, A: 150}
 	case theme.ColorNameError:
