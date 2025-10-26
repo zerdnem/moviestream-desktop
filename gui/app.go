@@ -22,11 +22,13 @@ var (
 	mainContainer    *fyne.Container
 	searchEntry      *widget.Entry
 	contentTypeRadio *widget.RadioGroup
+	viewModeRadio    *widget.RadioGroup
 	// Search state tracking
-	lastSearchQuery      string
-	lastSearchMovies     []api.Movie
-	lastSearchTVShows    []api.TVShow
+	lastSearchQuery       string
+	lastSearchMovies      []api.Movie
+	lastSearchTVShows     []api.TVShow
 	lastSearchContentType string
+	lastViewMode          string
 )
 
 // CreateMainUI creates the main user interface
@@ -66,10 +68,29 @@ func CreateMainUI(window fyne.Window) {
 		container.NewPadded(navButtons),
 	)
 
+	// Initialize defaults if not set
+	if lastSearchContentType == "" {
+		lastSearchContentType = "Movies"
+	}
+	if lastViewMode == "" {
+		lastViewMode = "Grid View"
+	}
+
 	// Modern content type selector
 	contentTypeRadio = widget.NewRadioGroup([]string{"Movies", "TV Shows"}, nil)
-	contentTypeRadio.SetSelected("Movies")
+	contentTypeRadio.SetSelected(lastSearchContentType)
 	contentTypeRadio.Horizontal = true
+
+	// View mode selector
+	viewModeRadio = widget.NewRadioGroup([]string{"Grid View", "List View"}, func(selected string) {
+		// Re-render results with new view mode
+		if lastSearchQuery != "" && (len(lastSearchMovies) > 0 || len(lastSearchTVShows) > 0) {
+			lastViewMode = selected
+			refreshSearchResults()
+		}
+	})
+	viewModeRadio.SetSelected(lastViewMode)
+	viewModeRadio.Horizontal = true
 
 	// Large search input
 	searchEntry = widget.NewEntry()
@@ -94,6 +115,7 @@ func CreateMainUI(window fyne.Window) {
 	searchSection := container.NewVBox(
 		contentTypeRadio,
 		searchBar,
+		viewModeRadio,
 	)
 
 	// Minimal player status
@@ -145,6 +167,23 @@ func CreateMainUI(window fyne.Window) {
 	)
 
 	window.SetContent(mainContainer)
+}
+
+// refreshSearchResults re-renders the search results with the current view mode
+func refreshSearchResults() {
+	var resultsWidget fyne.CanvasObject
+	
+	if lastSearchContentType == "Movies" && len(lastSearchMovies) > 0 {
+		resultsWidget = createMovieResults(lastSearchMovies)
+	} else if lastSearchContentType == "TV Shows" && len(lastSearchTVShows) > 0 {
+		resultsWidget = createTVResults(lastSearchTVShows)
+	}
+	
+	if resultsWidget != nil {
+		resultsScroll := container.NewVScroll(resultsWidget)
+		mainContainer.Objects[0] = resultsScroll
+		mainContainer.Refresh()
+	}
 }
 
 // performSearch executes the search based on selected content type
@@ -221,6 +260,76 @@ func createMovieResults(movies []api.Movie) fyne.CanvasObject {
 		)
 	}
 
+	// Check view mode (default to Grid View if not set)
+	if lastViewMode == "" || lastViewMode == "Grid View" {
+		return createMovieGridView(movies)
+	}
+	return createMovieListView(movies)
+}
+
+// createMovieGridView creates a grid view with cover images
+func createMovieGridView(movies []api.Movie) fyne.CanvasObject {
+	var items []fyne.CanvasObject
+	
+	// HBO Max style section header
+	sectionTitle := CreateTitle(fmt.Sprintf("Movies • %d Results", len(movies)))
+	items = append(items, 
+		widget.NewLabel(""),
+		sectionTitle,
+		widget.NewLabel(""),
+	)
+
+	// Create grid container (3 columns)
+	var gridItems []fyne.CanvasObject
+	for _, movie := range movies {
+		m := movie // Capture for closure
+		
+		// Load poster image
+		posterURL := api.GetPosterURL(m.PosterPath)
+		posterImg := LoadImageFromURL(posterURL, 150, 225)
+		posterImg.FillMode = canvas.ImageFillContain
+		
+		// Title
+		titleLabel := widget.NewLabelWithStyle(m.Title, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+		titleLabel.Wrapping = fyne.TextWrapWord
+		
+		// Rating
+		rating := fmt.Sprintf("⭐ %.1f", m.VoteAverage)
+		if m.VoteAverage == 0 {
+			rating = "⭐ N/A"
+		}
+		ratingLabel := widget.NewLabel(rating)
+		ratingLabel.Alignment = fyne.TextAlignCenter
+		
+		// Tappable card
+		cardContent := container.NewVBox(
+			posterImg,
+			titleLabel,
+			ratingLabel,
+		)
+		
+		// Create tappable container
+		tappable := widget.NewButton("", func() {
+			showMovieDetails(m)
+		})
+		tappable.Importance = widget.LowImportance
+		
+		itemCard := container.NewStack(
+			CreateMovieCard(cardContent),
+			container.NewPadded(tappable),
+		)
+		
+		gridItems = append(gridItems, itemCard)
+	}
+	
+	grid := container.NewGridWithColumns(3, gridItems...)
+	items = append(items, grid)
+	
+	return container.NewVBox(items...)
+}
+
+// createMovieListView creates a list view with cover images
+func createMovieListView(movies []api.Movie) fyne.CanvasObject {
 	var items []fyne.CanvasObject
 	
 	// HBO Max style section header
@@ -233,6 +342,11 @@ func createMovieResults(movies []api.Movie) fyne.CanvasObject {
 
 	for _, movie := range movies {
 		m := movie // Capture for closure
+		
+		// Load poster image
+		posterURL := api.GetPosterURL(m.PosterPath)
+		posterImg := LoadImageFromURL(posterURL, 100, 150)
+		posterImg.FillMode = canvas.ImageFillContain
 		
 		// Streaming service style card
 		titleLabel := widget.NewLabelWithStyle(m.Title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
@@ -262,13 +376,16 @@ func createMovieResults(movies []api.Movie) fyne.CanvasObject {
 			showMovieDetails(m)
 		})
 
-		// Compact card with minimal spacing
-		cardContent := container.NewVBox(
+		// Text content
+		textContent := container.NewVBox(
 			titleLabel,
 			infoLabel,
 			overviewLabel,
 			watchBtn,
 		)
+		
+		// Combine poster and text
+		cardContent := container.NewBorder(nil, nil, posterImg, nil, textContent)
 		
 		card := CreateMovieCard(cardContent)
 
@@ -290,6 +407,76 @@ func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 		)
 	}
 
+	// Check view mode (default to Grid View if not set)
+	if lastViewMode == "" || lastViewMode == "Grid View" {
+		return createTVGridView(tvShows)
+	}
+	return createTVListView(tvShows)
+}
+
+// createTVGridView creates a grid view with cover images
+func createTVGridView(tvShows []api.TVShow) fyne.CanvasObject {
+	var items []fyne.CanvasObject
+	
+	// HBO Max style section header
+	sectionTitle := CreateTitle(fmt.Sprintf("TV Shows • %d Results", len(tvShows)))
+	items = append(items, 
+		widget.NewLabel(""),
+		sectionTitle,
+		widget.NewLabel(""),
+	)
+
+	// Create grid container (3 columns)
+	var gridItems []fyne.CanvasObject
+	for _, show := range tvShows {
+		s := show // Capture for closure
+		
+		// Load poster image
+		posterURL := api.GetPosterURL(s.PosterPath)
+		posterImg := LoadImageFromURL(posterURL, 150, 225)
+		posterImg.FillMode = canvas.ImageFillContain
+		
+		// Title
+		titleLabel := widget.NewLabelWithStyle(s.Name, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+		titleLabel.Wrapping = fyne.TextWrapWord
+		
+		// Rating
+		rating := fmt.Sprintf("⭐ %.1f", s.VoteAverage)
+		if s.VoteAverage == 0 {
+			rating = "⭐ N/A"
+		}
+		ratingLabel := widget.NewLabel(rating)
+		ratingLabel.Alignment = fyne.TextAlignCenter
+		
+		// Tappable card
+		cardContent := container.NewVBox(
+			posterImg,
+			titleLabel,
+			ratingLabel,
+		)
+		
+		// Create tappable container
+		tappable := widget.NewButton("", func() {
+			showTVDetails(s)
+		})
+		tappable.Importance = widget.LowImportance
+		
+		itemCard := container.NewStack(
+			CreateMovieCard(cardContent),
+			container.NewPadded(tappable),
+		)
+		
+		gridItems = append(gridItems, itemCard)
+	}
+	
+	grid := container.NewGridWithColumns(3, gridItems...)
+	items = append(items, grid)
+	
+	return container.NewVBox(items...)
+}
+
+// createTVListView creates a list view with cover images
+func createTVListView(tvShows []api.TVShow) fyne.CanvasObject {
 	var items []fyne.CanvasObject
 	
 	// HBO Max style section header
@@ -302,6 +489,11 @@ func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 
 	for _, show := range tvShows {
 		s := show // Capture for closure
+		
+		// Load poster image
+		posterURL := api.GetPosterURL(s.PosterPath)
+		posterImg := LoadImageFromURL(posterURL, 100, 150)
+		posterImg.FillMode = canvas.ImageFillContain
 		
 		// Streaming service style card
 		titleLabel := widget.NewLabelWithStyle(s.Name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
@@ -331,13 +523,16 @@ func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 			showTVDetails(s)
 		})
 
-		// Compact card with minimal spacing
-		cardContent := container.NewVBox(
+		// Text content
+		textContent := container.NewVBox(
 			titleLabel,
 			infoLabel,
 			overviewLabel,
 			watchBtn,
 		)
+		
+		// Combine poster and text
+		cardContent := container.NewBorder(nil, nil, posterImg, nil, textContent)
 		
 		card := CreateMovieCard(cardContent)
 

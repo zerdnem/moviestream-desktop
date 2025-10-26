@@ -70,7 +70,27 @@ func createMainUIWithResults() {
 		contentTypeRadio = widget.NewRadioGroup([]string{"Movies", "TV Shows"}, nil)
 		contentTypeRadio.Horizontal = true
 	}
+	// Default to Movies if not set
+	if lastSearchContentType == "" {
+		lastSearchContentType = "Movies"
+	}
 	contentTypeRadio.SetSelected(lastSearchContentType)
+
+	// View mode selector - restore previous selection
+	if viewModeRadio == nil {
+		viewModeRadio = widget.NewRadioGroup([]string{"Grid View", "List View"}, func(selected string) {
+			// Re-render results with new view mode
+			if lastSearchQuery != "" && (len(lastSearchMovies) > 0 || len(lastSearchTVShows) > 0) {
+				lastViewMode = selected
+				refreshSearchResults()
+			}
+		})
+		viewModeRadio.Horizontal = true
+	}
+	if lastViewMode == "" {
+		lastViewMode = "Grid View"
+	}
+	viewModeRadio.SetSelected(lastViewMode)
 
 	// Compact search button (icon only)
 	searchBtn := widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
@@ -88,6 +108,7 @@ func createMainUIWithResults() {
 	searchSection := container.NewVBox(
 		contentTypeRadio,
 		searchBar,
+		viewModeRadio,
 	)
 
 	// Minimal player status
