@@ -249,9 +249,9 @@ func (h *History) removeDuplicates(items []HistoryItem, newItem HistoryItem) []H
 // GetDisplayTitle returns a formatted display title for a history item
 func (item *HistoryItem) GetDisplayTitle() string {
 	if item.Type == "movie" {
-		return fmt.Sprintf("🎬 %s", item.Title)
+		return item.Title
 	}
-	return fmt.Sprintf("📺 %s - S%dE%d: %s", item.Title, item.Season, item.Episode, item.EpisodeName)
+	return fmt.Sprintf("%s - S%dE%d: %s", item.Title, item.Season, item.Episode, item.EpisodeName)
 }
 
 // GetDisplayTime returns a human-readable time string
