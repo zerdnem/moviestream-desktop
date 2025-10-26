@@ -5,7 +5,9 @@ import (
 	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
+	"moviestream-gui/history"
 	"moviestream-gui/player"
+	"moviestream-gui/queue"
 	"moviestream-gui/settings"
 	"time"
 
@@ -82,7 +84,7 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 
 	// Back button
 	backBtn := widget.NewButton("← Back to Search", func() {
-		CreateMainUI(currentWindow)
+		GoBackToSearch()
 	})
 
 	// Season selector
@@ -199,7 +201,15 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 					downloadEpisode(tvID, seasonNum, ep.EpisodeNumber, showName, ep.Name)
 				})
 
-				buttonContainer := container.NewGridWithColumns(2, watchBtn, downloadBtn)
+				// Add to Queue button
+				addToQueueBtn := widget.NewButton("➕ Add to Queue", func() {
+					addEpisodeToQueue(tvID, showName, seasonNum, ep.EpisodeNumber, ep.Name)
+				})
+
+				buttonContainer := container.NewVBox(
+					container.NewGridWithColumns(2, watchBtn, downloadBtn),
+					addToQueueBtn,
+				)
 
 				episodeCard := container.NewVBox(
 					titleLabel,
@@ -218,6 +228,15 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 			episodesList.Refresh()
 		})
 	}()
+}
+
+// addEpisodeToQueue adds an episode to the playback queue
+func addEpisodeToQueue(tvID int, showName string, season, episode int, episodeName string) {
+	q := queue.Get()
+	q.AddEpisode(tvID, showName, season, episode, episodeName)
+	dialog.ShowInformation("Added to Queue", 
+		fmt.Sprintf("'%s - S%dE%d: %s' has been added to the playback queue.", showName, season, episode, episodeName), 
+		currentWindow)
 }
 
 // watchEpisodeWithAutoNext starts playing an episode with auto-next support
@@ -271,12 +290,20 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 
 		title := fmt.Sprintf("%s - S%dE%d - %s", showName, season, episode, episodeName)
 		
-		// Create callback for auto-next
+		// Create callback for auto-next and queue
 		var onEndCallback player.OnPlaybackEndCallback
 		userSettings := settings.Get()
+		q := queue.Get()
+		
+		// First try auto-next, then queue
 		if userSettings.AutoNext && tvID == currentTVShowID && season == currentSeason && episode == currentEpisode {
 			onEndCallback = func() {
 				playNextEpisode()
+			}
+		} else if !q.IsEmpty() {
+			// If auto-next is not enabled but queue has items, play from queue
+			onEndCallback = func() {
+				playNextInQueue()
 			}
 		}
 
@@ -284,6 +311,10 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 			dialog.ShowError(err, currentWindow)
 			return
 		}
+
+		// Record in watch history
+		h := history.Get()
+		h.AddEpisode(tvID, showName, season, episode, episodeName)
 
 		// Only show playback dialog if requested (not for auto-next triggered episodes)
 		if showDialog {
@@ -301,6 +332,11 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 				statusMsg += "\n\n▶ Auto-next is enabled\nNext episode will play automatically when this one ends"
 			} else if autoNextCancelled {
 				statusMsg += "\n\n⏸ Auto-next is disabled for this session"
+			}
+			
+			// Add queue info
+			if !q.IsEmpty() {
+				statusMsg += fmt.Sprintf("\n\n📋 %d item(s) in queue - will play after current content", q.Size())
 			}
 			
 			dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
@@ -386,10 +422,17 @@ func playNextEpisode() {
 	fmt.Printf("⚠ Auto-next: Could not find next episode\n")
 	autoNextInProgress = false
 	
-	// Show notification that auto-next couldn't continue
-	fyne.Do(func() {
-		dialog.ShowInformation("Auto-Next", "No more episodes available.", currentWindow)
-	})
+	// Try to play from queue instead
+	q := queue.Get()
+	if !q.IsEmpty() {
+		fmt.Println("📋 Auto-next ended, checking queue...")
+		playNextInQueue()
+	} else {
+		// Show notification that auto-next couldn't continue
+		fyne.Do(func() {
+			dialog.ShowInformation("Auto-Next", "No more episodes available.", currentWindow)
+		})
+	}
 }
 
 // showAutoNextCountdown shows a countdown dialog with cancel option before auto-next

@@ -2,8 +2,12 @@ package player
 
 import (
 	"fmt"
+	"io"
 	"moviestream-gui/settings"
+	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // PlayWithPlayer plays a stream using the user's selected video player
@@ -91,12 +95,20 @@ func launchVLC(exePath, streamURL, title string, subtitleURLs []string, onEnd On
 		fmt.Sprintf("--audio-language=%s", userSettings.AudioLanguage),
 	}
 
-	// Add subtitle files if provided
+	// Download subtitle files to temp directory if provided
+	var tempSubFiles []string
 	if len(subtitleURLs) > 0 {
 		fmt.Printf("✓ Loading %d subtitle track(s) into VLC\n", len(subtitleURLs))
 		for i, subURL := range subtitleURLs {
-			args = append(args, fmt.Sprintf("--sub-file=%s", subURL))
-			fmt.Printf("  Subtitle %d: %s\n", i+1, subURL)
+			// Download subtitle to temp file
+			tempFile, err := downloadSubtitleToTemp(subURL, i)
+			if err != nil {
+				fmt.Printf("  ⚠ Warning: Failed to download subtitle %d: %v\n", i+1, err)
+				continue
+			}
+			tempSubFiles = append(tempSubFiles, tempFile)
+			args = append(args, fmt.Sprintf("--sub-file=%s", tempFile))
+			fmt.Printf("  Subtitle %d: %s (downloaded)\n", i+1, subURL)
 		}
 		langName := getLanguageName(userSettings.SubtitleLanguage)
 		fmt.Printf("✓ Subtitles enabled (preferred: %s) - Press V to toggle\n", langName)
@@ -104,13 +116,22 @@ func launchVLC(exePath, streamURL, title string, subtitleURLs []string, onEnd On
 
 	cmd := exec.Command(exePath, args...)
 	if err := cmd.Start(); err != nil {
+		// Clean up temp files on error
+		cleanupTempSubtitles(tempSubFiles)
 		return fmt.Errorf("failed to start VLC: %v", err)
 	}
 
+	// Clean up temp subtitle files after player exits
 	if onEnd != nil {
 		go func() {
 			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 			onEnd()
+		}()
+	} else {
+		go func() {
+			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 		}()
 	}
 
@@ -121,10 +142,18 @@ func launchVLC(exePath, streamURL, title string, subtitleURLs []string, onEnd On
 func launchMPCHC(exePath, streamURL, title string, subtitleURLs []string, onEnd OnPlaybackEndCallback) error {
 	args := []string{streamURL}
 
-	// Add subtitle file if provided (MPC-HC can only load one subtitle file via command line)
+	// Download subtitle file if provided (MPC-HC can only load one subtitle file via command line)
+	var tempSubFiles []string
 	if len(subtitleURLs) > 0 {
 		fmt.Printf("✓ Loading subtitle into MPC-HC\n")
-		args = append(args, fmt.Sprintf("/sub %s", subtitleURLs[0]))
+		// Download first subtitle to temp file
+		tempFile, err := downloadSubtitleToTemp(subtitleURLs[0], 0)
+		if err != nil {
+			fmt.Printf("  ⚠ Warning: Failed to download subtitle: %v\n", err)
+		} else {
+			tempSubFiles = append(tempSubFiles, tempFile)
+			args = append(args, fmt.Sprintf("/sub %s", tempFile))
+		}
 		if len(subtitleURLs) > 1 {
 			fmt.Printf("⚠ Note: MPC-HC only supports one subtitle file via command line\n")
 		}
@@ -132,13 +161,21 @@ func launchMPCHC(exePath, streamURL, title string, subtitleURLs []string, onEnd 
 
 	cmd := exec.Command(exePath, args...)
 	if err := cmd.Start(); err != nil {
+		cleanupTempSubtitles(tempSubFiles)
 		return fmt.Errorf("failed to start MPC-HC: %v", err)
 	}
 
+	// Clean up temp subtitle files after player exits
 	if onEnd != nil {
 		go func() {
 			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 			onEnd()
+		}()
+	} else {
+		go func() {
+			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 		}()
 	}
 
@@ -149,23 +186,39 @@ func launchMPCHC(exePath, streamURL, title string, subtitleURLs []string, onEnd 
 func launchPotPlayer(exePath, streamURL, title string, subtitleURLs []string, onEnd OnPlaybackEndCallback) error {
 	args := []string{streamURL}
 
-	// Add subtitle file if provided
+	// Download subtitle files if provided
+	var tempSubFiles []string
 	if len(subtitleURLs) > 0 {
 		fmt.Printf("✓ Loading %d subtitle track(s) into PotPlayer\n", len(subtitleURLs))
-		for _, subURL := range subtitleURLs {
-			args = append(args, fmt.Sprintf("/sub=%s", subURL))
+		for i, subURL := range subtitleURLs {
+			// Download subtitle to temp file
+			tempFile, err := downloadSubtitleToTemp(subURL, i)
+			if err != nil {
+				fmt.Printf("  ⚠ Warning: Failed to download subtitle %d: %v\n", i+1, err)
+				continue
+			}
+			tempSubFiles = append(tempSubFiles, tempFile)
+			args = append(args, fmt.Sprintf("/sub=%s", tempFile))
 		}
 	}
 
 	cmd := exec.Command(exePath, args...)
 	if err := cmd.Start(); err != nil {
+		cleanupTempSubtitles(tempSubFiles)
 		return fmt.Errorf("failed to start PotPlayer: %v", err)
 	}
 
+	// Clean up temp subtitle files after player exits
 	if onEnd != nil {
 		go func() {
 			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 			onEnd()
+		}()
+	} else {
+		go func() {
+			cmd.Wait()
+			cleanupTempSubtitles(tempSubFiles)
 		}()
 	}
 
@@ -192,5 +245,48 @@ func getLanguageName(code string) string {
 		return name
 	}
 	return code
+}
+
+// downloadSubtitleToTemp downloads a subtitle file to a temporary location
+func downloadSubtitleToTemp(url string, index int) (string, error) {
+	// Download subtitle content
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download subtitle: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("failed to download subtitle: HTTP %d", resp.StatusCode)
+	}
+
+	// Create temp file
+	tempDir := os.TempDir()
+	tempFile := filepath.Join(tempDir, fmt.Sprintf("moviestream_subtitle_%d.vtt", index))
+	
+	file, err := os.Create(tempFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer file.Close()
+
+	// Write content to file
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		os.Remove(tempFile)
+		return "", fmt.Errorf("failed to write subtitle file: %v", err)
+	}
+
+	return tempFile, nil
+}
+
+// cleanupTempSubtitles removes temporary subtitle files
+func cleanupTempSubtitles(files []string) {
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			// Silently ignore cleanup errors
+			fmt.Printf("Warning: Failed to cleanup temp subtitle %s: %v\n", file, err)
+		}
+	}
 }
 

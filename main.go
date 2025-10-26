@@ -2,6 +2,8 @@ package main
 
 import (
 	"moviestream-gui/gui"
+	"moviestream-gui/history"
+	"moviestream-gui/queue"
 	"moviestream-gui/settings"
 	
 	"fyne.io/fyne/v2"
@@ -14,6 +16,10 @@ func main() {
 	
 	// Initialize settings system
 	settings.Initialize(myApp)
+	
+	// Initialize queue and history systems
+	queue.Initialize(myApp)
+	history.Initialize(myApp)
 	
 	myWindow := myApp.NewWindow("MovieStream - Movies & TV Shows")
 	

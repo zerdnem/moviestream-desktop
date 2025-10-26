@@ -5,7 +5,9 @@ import (
 	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
+	"moviestream-gui/history"
 	"moviestream-gui/player"
+	"moviestream-gui/queue"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -19,6 +21,11 @@ var (
 	mainContainer    *fyne.Container
 	searchEntry      *widget.Entry
 	contentTypeRadio *widget.RadioGroup
+	// Search state tracking
+	lastSearchQuery      string
+	lastSearchMovies     []api.Movie
+	lastSearchTVShows    []api.TVShow
+	lastSearchContentType string
 )
 
 // CreateMainUI creates the main user interface
@@ -55,6 +62,16 @@ func CreateMainUI(window fyne.Window) {
 		ShowSettingsDialog()
 	})
 
+	// Queue button
+	queueBtn := widget.NewButton("📋 Queue", func() {
+		ShowQueueView()
+	})
+
+	// History button
+	historyBtn := widget.NewButton("🕒 History", func() {
+		ShowHistoryView()
+	})
+
 	// Video player status check
 	playerStatus := widget.NewLabel("")
 	installedPlayers := player.GetInstalledPlayers()
@@ -82,6 +99,7 @@ func CreateMainUI(window fyne.Window) {
 		widget.NewLabel("Enter search query:"),
 		searchEntry,
 		container.NewGridWithColumns(2, searchBtn, settingsBtn),
+		container.NewGridWithColumns(2, queueBtn, historyBtn),
 		widget.NewSeparator(),
 		playerStatus,
 	)
@@ -123,12 +141,24 @@ func performSearch(query string) {
 			movies, searchErr := api.SearchMovies(query)
 			err = searchErr
 			if err == nil {
+				// Store search state
+				lastSearchQuery = query
+				lastSearchMovies = movies
+				lastSearchTVShows = nil
+				lastSearchContentType = "Movies"
+				
 				resultsWidget = createMovieResults(movies)
 			}
 		} else {
 			tvShows, searchErr := api.SearchTVShows(query)
 			err = searchErr
 			if err == nil {
+				// Store search state
+				lastSearchQuery = query
+				lastSearchMovies = nil
+				lastSearchTVShows = tvShows
+				lastSearchContentType = "TV Shows"
+				
 				resultsWidget = createTVResults(tvShows)
 			}
 		}
@@ -268,9 +298,14 @@ func showMovieDetails(movie api.Movie) {
 		downloadMovie(movie)
 	})
 
+	// Add to Queue button
+	addToQueueBtn := widget.NewButton("➕ Add to Queue", func() {
+		addMovieToQueue(movie)
+	})
+
 	// Back button
 	backBtn := widget.NewButton("← Back to Search", func() {
-		CreateMainUI(currentWindow)
+		GoBackToSearch()
 	})
 
 	content := container.NewVBox(
@@ -282,10 +317,29 @@ func showMovieDetails(movie api.Movie) {
 		overviewLabel,
 		widget.NewSeparator(),
 		container.NewGridWithColumns(2, watchBtn, downloadBtn),
+		addToQueueBtn,
 	)
 
 	scrollContent := container.NewVScroll(content)
 	currentWindow.SetContent(scrollContent)
+}
+
+// addMovieToQueue adds a movie to the playback queue
+func addMovieToQueue(movie api.Movie) {
+	q := queue.Get()
+	q.AddMovie(movie.ID, movie.Title)
+	dialog.ShowInformation("Added to Queue", 
+		fmt.Sprintf("'%s' has been added to the playback queue.", movie.Title), 
+		currentWindow)
+}
+
+// watchMovieByID starts playing a movie by ID and title
+func watchMovieByID(movieID int, title string) {
+	movie := api.Movie{
+		ID:    movieID,
+		Title: title,
+	}
+	watchMovie(movie)
 }
 
 // watchMovie starts playing a movie in MPV
@@ -315,10 +369,19 @@ func watchMovie(movie api.Movie) {
 			subtitleURLs = append(subtitleURLs, sub.URL)
 		}
 
-		if err := player.PlayWithMPV(streamInfo.StreamURL, movie.Title, subtitleURLs); err != nil {
+		// Create callback for queue auto-play
+		onEndCallback := func() {
+			playNextInQueue()
+		}
+
+		if err := player.PlayWithMPVAndCallback(streamInfo.StreamURL, movie.Title, subtitleURLs, onEndCallback); err != nil {
 			dialog.ShowError(err, currentWindow)
 			return
 		}
+
+		// Record in watch history
+		h := history.Get()
+		h.AddMovie(movie.ID, movie.Title)
 
 		// Show subtitle status
 		var statusMsg string
@@ -327,6 +390,13 @@ func watchMovie(movie api.Movie) {
 		} else {
 			statusMsg = fmt.Sprintf("✓ Playing '%s'\n\n⚠ No subtitles found for this content\n\nNote: You can still add external subtitles in your video player", movie.Title)
 		}
+		
+		// Add queue info
+		q := queue.Get()
+		if !q.IsEmpty() {
+			statusMsg += fmt.Sprintf("\n\n📋 %d item(s) in queue - will play next automatically", q.Size())
+		}
+		
 		dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
 	}()
 }
@@ -366,5 +436,29 @@ func downloadMovie(movie api.Movie) {
 				currentWindow)
 		})
 	}()
+}
+
+// playNextInQueue plays the next item in the queue
+func playNextInQueue() {
+	q := queue.Get()
+	
+	if q.IsEmpty() {
+		fmt.Println("Queue is empty, no more items to play")
+		return
+	}
+
+	nextItem, ok := q.GetNext()
+	if !ok {
+		return
+	}
+
+	fmt.Printf("📋 Playing next item from queue: %s\n", nextItem.GetDisplayTitle())
+	
+	// Play the next item
+	if nextItem.Type == "movie" {
+		watchMovieByID(nextItem.TMDBID, nextItem.Title)
+	} else {
+		watchEpisodeWithAutoNext(nextItem.TMDBID, nextItem.Season, nextItem.Episode, nextItem.Title, nextItem.EpisodeName, 0)
+	}
 }
 
