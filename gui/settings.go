@@ -116,7 +116,7 @@ func ShowSettingsDialog() {
 		}
 		
 		settings.Save(newSettings)
-		dialog.ShowInformation("Success", "✓ Settings saved successfully!", currentWindow)
+		fmt.Println("✓ Settings saved successfully!")
 	})
 	
 	// Compact form layout

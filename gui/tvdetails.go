@@ -240,9 +240,7 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 func addEpisodeToQueue(tvID int, showName string, season, episode int, episodeName string) {
 	q := queue.Get()
 	q.AddEpisode(tvID, showName, season, episode, episodeName)
-	dialog.ShowInformation("Added to Queue", 
-		fmt.Sprintf("'%s - S%dE%d: %s' has been added to the playback queue.", showName, season, episode, episodeName), 
-		currentWindow)
+	fmt.Printf("✓ Added to queue: %s - S%dE%d: %s (Queue size: %d)\n", showName, season, episode, episodeName, q.Size())
 }
 
 // watchEpisodeWithAutoNext starts playing an episode with auto-next support
@@ -353,31 +351,24 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 		h := history.Get()
 		h.AddEpisode(tvID, showName, season, episode, episodeName)
 
-		// Only show playback dialog if requested (not for auto-next triggered episodes)
-		if showDialog {
-			// Show detailed playback status
-			var statusMsg string
-			episodeInfo := fmt.Sprintf("✓ Playing: %s - S%dE%d\n", showName, season, episode)
-			
-			if len(subtitleURLs) > 0 {
-				statusMsg = fmt.Sprintf("%s\n✓ %d subtitle track(s) loaded", episodeInfo, len(subtitleURLs))
-			} else {
-				statusMsg = fmt.Sprintf("%s\n⚠ No subtitles found for this episode\n\nNote: You can still add external subtitles in your video player", episodeInfo)
-			}
-			
-			if userSettings.AutoNext && !autoNextCancelled {
-				statusMsg += "\n\n▶ Auto-next is enabled\nNext episode will play automatically when this one ends"
-			} else if autoNextCancelled {
-				statusMsg += "\n\n⏸ Auto-next is disabled for this session"
-			}
-			
-			// Add queue info
-			if !q.IsEmpty() {
-				statusMsg += fmt.Sprintf("\n\n📋 %d item(s) in queue - will play after current content", q.Size())
-			}
-			
-			dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
+		// Print status to console instead of showing dialog
+		fmt.Printf("\n▶ Playing: %s - S%dE%d - %s\n", showName, season, episode, episodeName)
+		if len(subtitleURLs) > 0 {
+			fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
+		} else {
+			fmt.Printf("   ⚠ No subtitles found\n")
 		}
+		
+		if userSettings.AutoNext && !autoNextCancelled {
+			fmt.Printf("   ▶ Auto-next enabled - Next episode will play automatically\n")
+		} else if autoNextCancelled {
+			fmt.Printf("   ⏸ Auto-next disabled for this session\n")
+		}
+		
+		if !q.IsEmpty() {
+			fmt.Printf("   📋 Queue: %d item(s) waiting\n", q.Size())
+		}
+		fmt.Println()
 	}()
 }
 
@@ -500,13 +491,19 @@ func showAutoNextCountdown(tvID, season, episode int, showName, episodeName stri
 			autoNextCancelled = true
 			autoNextInProgress = false
 			customDialog.Hide()
-			dialog.ShowInformation("Auto-Next Cancelled", "Auto-next has been disabled for this session.\n\nYou can re-enable it in Settings.", currentWindow)
+			dialog.ShowInformation("Auto-Next Cancelled", "Auto-next has been disabled for this session.\n\nIt will automatically re-enable when you start watching a new show.", currentWindow)
 		})
 		
 		continueBtn := widget.NewButton("Play Now", func() {
 			cancelled = true // Stop countdown
 			customDialog.Hide()
 			fmt.Printf("▶ Auto-next: Playing S%dE%d - %s (manual trigger)\n", season, episode, episodeName)
+			// Update tracking variables before playing
+			currentTVShowID = tvID
+			currentShowName = showName
+			currentSeason = season
+			currentEpisode = episode
+			autoNextInProgress = false // Reset for next auto-next
 			watchEpisodeWithoutDialog(tvID, season, episode, showName, episodeName)
 		})
 		
@@ -545,6 +542,12 @@ func showAutoNextCountdown(tvID, season, episode int, showName, episodeName stri
 				})
 				
 				fmt.Printf("▶ Auto-next: Playing S%dE%d - %s\n", season, episode, episodeName)
+				// Update tracking variables before playing
+				currentTVShowID = tvID
+				currentShowName = showName
+				currentSeason = season
+				currentEpisode = episode
+				autoNextInProgress = false // Reset for next auto-next
 				watchEpisodeWithoutDialog(tvID, season, episode, showName, episodeName)
 			} else {
 				autoNextInProgress = false

@@ -410,9 +410,7 @@ func showMovieDetails(movie api.Movie) {
 func addMovieToQueue(movie api.Movie) {
 	q := queue.Get()
 	q.AddMovie(movie.ID, movie.Title)
-	dialog.ShowInformation("Added to Queue", 
-		fmt.Sprintf("'%s' has been added to the playback queue.", movie.Title), 
-		currentWindow)
+	fmt.Printf("✓ Added to queue: %s (Queue size: %d)\n", movie.Title, q.Size())
 }
 
 // watchMovieByID starts playing a movie by ID and title
@@ -465,21 +463,19 @@ func watchMovie(movie api.Movie) {
 		h := history.Get()
 		h.AddMovie(movie.ID, movie.Title)
 
-		// Show subtitle status
-		var statusMsg string
+		// Print status to console instead of showing dialog
+		fmt.Printf("\n▶ Playing: %s\n", movie.Title)
 		if len(subtitleURLs) > 0 {
-			statusMsg = fmt.Sprintf("✓ Playing '%s'\n\n%d subtitle track(s) loaded successfully", movie.Title, len(subtitleURLs))
+			fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
 		} else {
-			statusMsg = fmt.Sprintf("✓ Playing '%s'\n\n⚠ No subtitles found for this content\n\nNote: You can still add external subtitles in your video player", movie.Title)
+			fmt.Printf("   ⚠ No subtitles found\n")
 		}
 		
-		// Add queue info
 		q := queue.Get()
 		if !q.IsEmpty() {
-			statusMsg += fmt.Sprintf("\n\n📋 %d item(s) in queue - will play next automatically", q.Size())
+			fmt.Printf("   📋 Queue: %d item(s) waiting\n", q.Size())
 		}
-		
-		dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
+		fmt.Println()
 	}()
 }
 
