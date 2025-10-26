@@ -1,0 +1,28 @@
+# Binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+moviestream
+moviestream.exe
+
+# Go build cache
+*.test
+*.out
+
+# Downloads folder
+downloads/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
