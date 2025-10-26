@@ -22,8 +22,11 @@ func GoBackToSearch() {
 
 // createMainUIWithResults recreates the main UI and populates it with the last search results
 func createMainUIWithResults() {
-	// Create logo instead of text title
-	logo := CreateAppLogo(180, 50)
+	// Create title with icon
+	titleIcon := widget.NewIcon(theme.MediaVideoIcon())
+	titleLabel := widget.NewLabelWithStyle("MovieStream", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	titleLabel.TextStyle.Bold = true
+	titleContainer := container.NewHBox(titleIcon, titleLabel)
 	
 	// Sleek navigation buttons
 	settingsBtn := CreateIconButton("", IconSettings, func() {
@@ -50,7 +53,7 @@ func createMainUIWithResults() {
 	// Spacious header bar
 	headerBar := container.NewBorder(
 		nil, nil,
-		container.NewPadded(logo),
+		container.NewPadded(titleContainer),
 		container.NewPadded(navButtons),
 	)
 
