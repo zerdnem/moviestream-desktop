@@ -73,6 +73,11 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	})
 	backBtn.Importance = widget.LowImportance
 
+	// Load poster image
+	posterURL := api.GetPosterURL(tvDetails.PosterPath)
+	posterImg := LoadImageFromURL(posterURL, 200, 300)
+	posterImg.FillMode = canvas.ImageFillContain
+
 	// Modern title with accent color - make it more prominent on backdrop
 	titleText := canvas.NewText(tvDetails.Name, GetTextColor())
 	titleText.TextSize = 28
@@ -135,6 +140,8 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		content := container.NewVBox(
 			backBtn,
 			widget.NewSeparator(),
+			container.NewCenter(posterImg),
+			widget.NewLabel(""),
 			container.NewCenter(glowContainer),
 			container.NewCenter(infoLabel),
 			widget.NewSeparator(),
@@ -167,6 +174,8 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
+		container.NewCenter(posterImg),
+		widget.NewLabel(""),
 		container.NewCenter(glowContainer),
 		container.NewCenter(infoLabel),
 		widget.NewSeparator(),

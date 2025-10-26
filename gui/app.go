@@ -542,6 +542,11 @@ func showMovieDetails(movie api.Movie) {
 	})
 	backBtn.Importance = widget.LowImportance
 
+	// Load poster image
+	posterURL := api.GetPosterURL(movie.PosterPath)
+	posterImg := LoadImageFromURL(posterURL, 200, 300)
+	posterImg.FillMode = canvas.ImageFillContain
+
 	// Hero title section with enhanced visibility on backdrop
 	titleText := canvas.NewText(movie.Title, GetTextColor())
 	titleText.TextSize = 28
@@ -610,6 +615,8 @@ func showMovieDetails(movie api.Movie) {
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
+		container.NewCenter(posterImg),
+		widget.NewLabel(""),
 		container.NewCenter(titleContainer),
 		container.NewCenter(infoLabel),
 		watchBtn,
