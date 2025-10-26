@@ -50,14 +50,27 @@ func CreateMainUI(window fyne.Window) {
 		}
 	})
 
-	// MPV status check
-	mpvStatus := widget.NewLabel("")
-	if player.CheckMPVInstalled() {
-		mpvStatus.SetText("✓ MPV Player detected")
-		mpvStatus.Importance = widget.SuccessImportance
+	// Settings button
+	settingsBtn := widget.NewButton("⚙ Settings", func() {
+		ShowSettingsDialog()
+	})
+
+	// Video player status check
+	playerStatus := widget.NewLabel("")
+	installedPlayers := player.GetInstalledPlayers()
+	if len(installedPlayers) > 0 {
+		playerNames := ""
+		for i, p := range installedPlayers {
+			if i > 0 {
+				playerNames += ", "
+			}
+			playerNames += p.Name
+		}
+		playerStatus.SetText(fmt.Sprintf("✓ Video Players: %s", playerNames))
+		playerStatus.Importance = widget.SuccessImportance
 	} else {
-		mpvStatus.SetText("⚠ MPV Player not found - Install from https://mpv.io/")
-		mpvStatus.Importance = widget.WarningImportance
+		playerStatus.SetText("⚠ No video player detected - Install MPV, VLC, or another supported player")
+		playerStatus.Importance = widget.WarningImportance
 	}
 
 	// Search container
@@ -68,9 +81,9 @@ func CreateMainUI(window fyne.Window) {
 		contentTypeRadio,
 		widget.NewLabel("Enter search query:"),
 		searchEntry,
-		searchBtn,
+		container.NewGridWithColumns(2, searchBtn, settingsBtn),
 		widget.NewSeparator(),
-		mpvStatus,
+		playerStatus,
 	)
 
 	// Results container (initially empty)
@@ -307,11 +320,14 @@ func watchMovie(movie api.Movie) {
 			return
 		}
 
-		subMsg := ""
+		// Show subtitle status
+		var statusMsg string
 		if len(subtitleURLs) > 0 {
-			subMsg = fmt.Sprintf(" with %d subtitle track(s)", len(subtitleURLs))
+			statusMsg = fmt.Sprintf("✓ Playing '%s'\n\n%d subtitle track(s) loaded successfully", movie.Title, len(subtitleURLs))
+		} else {
+			statusMsg = fmt.Sprintf("✓ Playing '%s'\n\n⚠ No subtitles found for this content\n\nNote: You can still add external subtitles in your video player", movie.Title)
 		}
-		dialog.ShowInformation("Success", fmt.Sprintf("Playing '%s' in MPV%s", movie.Title, subMsg), currentWindow)
+		dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
 	}()
 }
 

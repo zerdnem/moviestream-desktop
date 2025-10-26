@@ -2,12 +2,27 @@ package player
 
 import (
 	"fmt"
+	"moviestream-gui/settings"
 	"os/exec"
 	"runtime"
 )
 
-// PlayWithMPV plays a stream URL using MPV player with optional subtitles
+// OnPlaybackEndCallback is a function that gets called when playback ends
+type OnPlaybackEndCallback func()
+
+// PlayWithMPV plays a stream URL using the user's selected video player with optional subtitles
 func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
+	return PlayWithMPVAndCallback(streamURL, title, subtitleURLs, nil)
+}
+
+// PlayWithMPVAndCallback plays a stream URL using the user's selected video player with optional callback when playback ends
+func PlayWithMPVAndCallback(streamURL string, title string, subtitleURLs []string, onEnd OnPlaybackEndCallback) error {
+	// Use the new player launcher that respects user's player choice
+	return PlayWithPlayer(streamURL, title, subtitleURLs, onEnd)
+}
+
+// PlayWithMPVLegacy is the original MPV-specific implementation (kept for reference)
+func PlayWithMPVLegacy(streamURL string, title string, subtitleURLs []string, onEnd OnPlaybackEndCallback) error {
 	// Check if MPV is available
 	mpvPath := "mpv"
 	
@@ -38,6 +53,9 @@ func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
 		}
 	}
 
+	// Get user settings
+	userSettings := settings.Get()
+	
 	// Build MPV command with useful options
 	args := []string{
 		streamURL,
@@ -45,8 +63,9 @@ func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
 		"--force-window=immediate",
 		"--keep-open=yes",
 		"--osd-level=1",
-		"--slang=en,eng,english", // Prefer English subtitles
-		"--sub-auto=all",          // Load all available subtitles
+		fmt.Sprintf("--slang=%s,%s,eng,english", userSettings.SubtitleLanguage, userSettings.SubtitleLanguage+"g"), // Prefer user's subtitle language
+		fmt.Sprintf("--alang=%s,%s,eng,english", userSettings.AudioLanguage, userSettings.AudioLanguage+"g"),       // Prefer user's audio language
+		"--sub-auto=all",                                                                                            // Load all available subtitles
 	}
 
 	// Add subtitle files if provided
@@ -58,7 +77,12 @@ func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
 		}
 		// Enable subtitles by default
 		args = append(args, "--sid=1") // Select first subtitle track
-		fmt.Printf("✓ English subtitles enabled by default (Press V to toggle)\n")
+		langName := map[string]string{"en": "English", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "pt": "Portuguese", "ja": "Japanese", "ko": "Korean", "zh": "Chinese", "ar": "Arabic", "ru": "Russian", "hi": "Hindi"}
+		preferredLang := langName[userSettings.SubtitleLanguage]
+		if preferredLang == "" {
+			preferredLang = userSettings.SubtitleLanguage
+		}
+		fmt.Printf("✓ Subtitles enabled (preferred: %s) - Press V to toggle\n", preferredLang)
 	} else {
 		fmt.Printf("⚠ No subtitles available for this content\n")
 	}
@@ -70,11 +94,25 @@ func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
 		return fmt.Errorf("failed to start MPV: %v", err)
 	}
 
+	// If callback is provided, wait for MPV to finish in a goroutine
+	if onEnd != nil {
+		go func() {
+			cmd.Wait() // Wait for MPV to exit
+			onEnd()    // Call the callback
+		}()
+	}
+
 	return nil
 }
 
-// CheckMPVInstalled checks if MPV is installed on the system
+// CheckMPVInstalled checks if any supported video player is installed on the system
 func CheckMPVInstalled() bool {
+	installedPlayers := GetInstalledPlayers()
+	return len(installedPlayers) > 0
+}
+
+// CheckMPVInstalledLegacy checks if MPV specifically is installed
+func CheckMPVInstalledLegacy() bool {
 	_, err := exec.LookPath("mpv")
 	if err == nil {
 		return true

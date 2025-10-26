@@ -6,6 +6,8 @@ import (
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
 	"moviestream-gui/player"
+	"moviestream-gui/settings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -14,8 +16,30 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// Episode tracking for auto-next functionality
+var (
+	currentTVShowID      int
+	currentShowName      string
+	currentSeason        int
+	currentEpisode       int
+	totalEpisodes        int
+	seasonDetailsCache   map[string]*api.Season // Cache season details for auto-next
+	autoNextCancelled    bool                   // Flag to cancel auto-next for current session
+	autoNextInProgress   bool                   // Flag to prevent multiple auto-next triggers
+)
+
+func init() {
+	seasonDetailsCache = make(map[string]*api.Season)
+	autoNextCancelled = false
+	autoNextInProgress = false
+}
+
 // showTVDetails shows detailed view for a TV show with episode list
 func showTVDetails(tvShow api.TVShow) {
+	// Reset auto-next cancellation when viewing a new show
+	autoNextCancelled = false
+	autoNextInProgress = false
+	
 	progress := dialog.NewProgressInfinite("Loading", "Fetching TV show details...", currentWindow)
 	progress.Show()
 
@@ -145,6 +169,10 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 			return
 		}
 
+		// Cache season details for auto-next functionality
+		cacheKey := fmt.Sprintf("%d-%d", tvID, seasonNum)
+		seasonDetailsCache[cacheKey] = season
+
 		// Build episode widgets
 		var episodeWidgets []fyne.CanvasObject
 
@@ -163,7 +191,7 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 
 				// Watch button
 				watchBtn := widget.NewButton("▶ Watch", func() {
-					watchEpisode(tvID, seasonNum, ep.EpisodeNumber, showName, ep.Name)
+					watchEpisodeWithAutoNext(tvID, seasonNum, ep.EpisodeNumber, showName, ep.Name, len(season.Episodes))
 				})
 
 				// Download button
@@ -192,8 +220,31 @@ func loadEpisodes(tvID, seasonNum int, episodesList *fyne.Container, showName st
 	}()
 }
 
+// watchEpisodeWithAutoNext starts playing an episode with auto-next support
+func watchEpisodeWithAutoNext(tvID, season, episode int, showName, episodeName string, totalEps int) {
+	// Update current episode tracking
+	currentTVShowID = tvID
+	currentShowName = showName
+	currentSeason = season
+	currentEpisode = episode
+	totalEpisodes = totalEps
+	autoNextInProgress = false // Reset the flag for new episode
+
+	watchEpisode(tvID, season, episode, showName, episodeName)
+}
+
 // watchEpisode starts playing an episode in MPV
 func watchEpisode(tvID, season, episode int, showName, episodeName string) {
+	watchEpisodeInternal(tvID, season, episode, showName, episodeName, true)
+}
+
+// watchEpisodeWithoutDialog starts playing an episode without showing the playback started dialog
+func watchEpisodeWithoutDialog(tvID, season, episode int, showName, episodeName string) {
+	watchEpisodeInternal(tvID, season, episode, showName, episodeName, false)
+}
+
+// watchEpisodeInternal is the internal implementation for playing episodes
+func watchEpisodeInternal(tvID, season, episode int, showName, episodeName string, showDialog bool) {
 	progress := dialog.NewProgressInfinite("Loading Stream", 
 		"Fetching stream URL...\nThis may take 10-15 seconds for browser automation", 
 		currentWindow)
@@ -219,17 +270,197 @@ func watchEpisode(tvID, season, episode int, showName, episodeName string) {
 		}
 
 		title := fmt.Sprintf("%s - S%dE%d - %s", showName, season, episode, episodeName)
-		if err := player.PlayWithMPV(streamInfo.StreamURL, title, subtitleURLs); err != nil {
+		
+		// Create callback for auto-next
+		var onEndCallback player.OnPlaybackEndCallback
+		userSettings := settings.Get()
+		if userSettings.AutoNext && tvID == currentTVShowID && season == currentSeason && episode == currentEpisode {
+			onEndCallback = func() {
+				playNextEpisode()
+			}
+		}
+
+		if err := player.PlayWithMPVAndCallback(streamInfo.StreamURL, title, subtitleURLs, onEndCallback); err != nil {
 			dialog.ShowError(err, currentWindow)
 			return
 		}
 
-		subMsg := ""
-		if len(subtitleURLs) > 0 {
-			subMsg = fmt.Sprintf(" with %d subtitle track(s)", len(subtitleURLs))
+		// Only show playback dialog if requested (not for auto-next triggered episodes)
+		if showDialog {
+			// Show detailed playback status
+			var statusMsg string
+			episodeInfo := fmt.Sprintf("✓ Playing: %s - S%dE%d\n", showName, season, episode)
+			
+			if len(subtitleURLs) > 0 {
+				statusMsg = fmt.Sprintf("%s\n✓ %d subtitle track(s) loaded", episodeInfo, len(subtitleURLs))
+			} else {
+				statusMsg = fmt.Sprintf("%s\n⚠ No subtitles found for this episode\n\nNote: You can still add external subtitles in your video player", episodeInfo)
+			}
+			
+			if userSettings.AutoNext && !autoNextCancelled {
+				statusMsg += "\n\n▶ Auto-next is enabled\nNext episode will play automatically when this one ends"
+			} else if autoNextCancelled {
+				statusMsg += "\n\n⏸ Auto-next is disabled for this session"
+			}
+			
+			dialog.ShowInformation("Playback Started", statusMsg, currentWindow)
 		}
-		dialog.ShowInformation("Success", fmt.Sprintf("Playing episode in MPV%s", subMsg), currentWindow)
 	}()
+}
+
+// playNextEpisode automatically plays the next episode
+func playNextEpisode() {
+	userSettings := settings.Get()
+	if !userSettings.AutoNext || autoNextCancelled || autoNextInProgress {
+		return
+	}
+
+	autoNextInProgress = true // Prevent multiple triggers
+	fmt.Printf("🔄 Auto-next: Preparing next episode...\n")
+	
+	nextEpisode := currentEpisode + 1
+	nextSeason := currentSeason
+
+	// Check if we need to move to the next season
+	if nextEpisode > totalEpisodes {
+		nextSeason++
+		nextEpisode = 1
+		
+		// Try to load next season details
+		cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, nextSeason)
+		if seasonDetails, exists := seasonDetailsCache[cacheKey]; exists && len(seasonDetails.Episodes) > 0 {
+			totalEpisodes = len(seasonDetails.Episodes)
+		} else {
+			// Try to fetch next season
+			go func() {
+				season, err := api.GetSeasonDetails(currentTVShowID, nextSeason)
+				if err != nil || len(season.Episodes) == 0 {
+					// No more episodes
+					fmt.Printf("Auto-next: End of series\n")
+					return
+				}
+				cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, nextSeason)
+				seasonDetailsCache[cacheKey] = season
+				totalEpisodes = len(season.Episodes)
+				currentSeason = nextSeason
+				currentEpisode = nextEpisode
+				
+				// Play first episode of next season
+				if len(season.Episodes) > 0 {
+					ep := season.Episodes[0]
+					fmt.Printf("▶ Auto-next: Will move to next season - S%dE%d - %s\n", nextSeason, ep.EpisodeNumber, ep.Name)
+					
+					// Show countdown with new season indication (includes season info in episode name)
+					newSeasonEpisodeName := fmt.Sprintf("🎬 NEW SEASON! - %s", ep.Name)
+					showAutoNextCountdown(currentTVShowID, nextSeason, ep.EpisodeNumber, currentShowName, newSeasonEpisodeName)
+				} else {
+					// No episodes in next season
+					autoNextInProgress = false
+					fyne.Do(func() {
+						dialog.ShowInformation("Auto-Next", "End of series reached.", currentWindow)
+					})
+				}
+			}()
+			return
+		}
+	}
+
+	// Update tracking
+	currentSeason = nextSeason
+	currentEpisode = nextEpisode
+
+	// Get episode details from cache
+	cacheKey := fmt.Sprintf("%d-%d", currentTVShowID, currentSeason)
+	if seasonDetails, exists := seasonDetailsCache[cacheKey]; exists {
+		for _, ep := range seasonDetails.Episodes {
+			if ep.EpisodeNumber == nextEpisode {
+				fmt.Printf("▶ Auto-next: Will play S%dE%d - %s in 5 seconds...\n", nextSeason, nextEpisode, ep.Name)
+				
+				// Show countdown notification with cancel option
+				showAutoNextCountdown(currentTVShowID, nextSeason, nextEpisode, currentShowName, ep.Name)
+				return
+			}
+		}
+	}
+
+	fmt.Printf("⚠ Auto-next: Could not find next episode\n")
+	autoNextInProgress = false
+	
+	// Show notification that auto-next couldn't continue
+	fyne.Do(func() {
+		dialog.ShowInformation("Auto-Next", "No more episodes available.", currentWindow)
+	})
+}
+
+// showAutoNextCountdown shows a countdown dialog with cancel option before auto-next
+func showAutoNextCountdown(tvID, season, episode int, showName, episodeName string) {
+	cancelled := false
+	
+	fyne.Do(func() {
+		// Create countdown message
+		countdownMsg := fmt.Sprintf("Next episode will start in 5 seconds...\n\nS%dE%d - %s", season, episode, episodeName)
+		countdownLabel := widget.NewLabel(countdownMsg)
+		countdownLabel.Alignment = fyne.TextAlignCenter
+		
+		// Create custom dialog with Cancel button
+		var customDialog *dialog.CustomDialog
+		
+		cancelBtn := widget.NewButton("Cancel Auto-Next", func() {
+			cancelled = true
+			autoNextCancelled = true
+			autoNextInProgress = false
+			customDialog.Hide()
+			dialog.ShowInformation("Auto-Next Cancelled", "Auto-next has been disabled for this session.\n\nYou can re-enable it in Settings.", currentWindow)
+		})
+		
+		continueBtn := widget.NewButton("Play Now", func() {
+			cancelled = true // Stop countdown
+			customDialog.Hide()
+			fmt.Printf("▶ Auto-next: Playing S%dE%d - %s (manual trigger)\n", season, episode, episodeName)
+			watchEpisodeWithoutDialog(tvID, season, episode, showName, episodeName)
+		})
+		
+		content := container.NewVBox(
+			countdownLabel,
+			widget.NewSeparator(),
+			container.NewGridWithColumns(2, continueBtn, cancelBtn),
+		)
+		
+		customDialog = dialog.NewCustom("Auto-Next Episode", "", content, currentWindow)
+		customDialog.Show()
+		
+		// Start countdown
+		go func() {
+			for i := 5; i > 0; i-- {
+				if cancelled {
+					return
+				}
+				
+				// Update countdown
+				fyne.Do(func() {
+					if !cancelled {
+						countdownMsg := fmt.Sprintf("Next episode will start in %d second(s)...\n\nS%dE%d - %s", i, season, episode, episodeName)
+						countdownLabel.SetText(countdownMsg)
+					}
+				})
+				
+				// Wait 1 second
+				time.Sleep(1 * time.Second)
+			}
+			
+			// If not cancelled, play next episode
+			if !cancelled {
+				fyne.Do(func() {
+					customDialog.Hide()
+				})
+				
+				fmt.Printf("▶ Auto-next: Playing S%dE%d - %s\n", season, episode, episodeName)
+				watchEpisodeWithoutDialog(tvID, season, episode, showName, episodeName)
+			} else {
+				autoNextInProgress = false
+			}
+		}()
+	})
 }
 
 // downloadEpisode downloads an episode
