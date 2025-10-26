@@ -7,43 +7,29 @@ import (
 	"fyne.io/fyne/v2/theme"
 )
 
-// Monochrome color palette (https://www.color-hex.com/color-palette/8528)
+// Geist Design System monochrome palette (https://vercel.com/geist/colors)
 var (
-	// Primary monochrome colors
-	WarpAccent     = color.RGBA{R: 192, G: 192, B: 192, A: 255}   // #c0c0c0 Silver
-	WarpBackground = color.RGBA{R: 0, G: 0, B: 0, A: 255}         // #000000 Black
-	WarpForeground = color.RGBA{R: 255, G: 255, B: 255, A: 255}   // #ffffff White
+	// Backgrounds
+	GeistBackground1 = color.RGBA{R: 0, G: 0, B: 0, A: 255}      // #000000 - Default element background
+	GeistBackground2 = color.RGBA{R: 10, G: 10, B: 10, A: 255}   // #0a0a0a - Secondary background
 	
-	// Terminal colors - Normal (monochrome)
-	WarpBlack      = color.RGBA{R: 0, G: 0, B: 0, A: 255}         // #000000 Black
-	WarpBlue       = color.RGBA{R: 192, G: 192, B: 192, A: 255}   // #c0c0c0 Silver
-	WarpCyan       = color.RGBA{R: 255, G: 255, B: 255, A: 255}   // #ffffff White
-	WarpGreen      = color.RGBA{R: 192, G: 192, B: 192, A: 255}   // #c0c0c0 Silver
-	WarpRed        = color.RGBA{R: 128, G: 128, B: 128, A: 255}   // #808080 Gray
-	WarpMagenta    = color.RGBA{R: 192, G: 192, B: 192, A: 255}   // #c0c0c0 Silver
-	WarpWhite      = color.RGBA{R: 255, G: 255, B: 255, A: 255}   // #ffffff White
-	WarpYellow     = color.RGBA{R: 192, G: 192, B: 192, A: 255}   // #c0c0c0 Silver
+	// Gray scale (Dark mode values)
+	GeistGray1  = color.RGBA{R: 17, G: 17, B: 17, A: 255}   // Component default background
+	GeistGray2  = color.RGBA{R: 23, G: 23, B: 23, A: 255}   // Component hover background
+	GeistGray3  = color.RGBA{R: 31, G: 31, B: 31, A: 255}   // Component active background
+	GeistGray4  = color.RGBA{R: 46, G: 46, B: 46, A: 255}   // Default border
+	GeistGray5  = color.RGBA{R: 62, G: 62, B: 62, A: 255}   // Hover border
+	GeistGray6  = color.RGBA{R: 77, G: 77, B: 77, A: 255}   // Active border
+	GeistGray7  = color.RGBA{R: 99, G: 99, B: 99, A: 255}   // High contrast background
+	GeistGray8  = color.RGBA{R: 117, G: 117, B: 117, A: 255}  // Hover high contrast background
+	GeistGray9  = color.RGBA{R: 150, G: 150, B: 150, A: 255}  // Secondary text and icons
+	GeistGray10 = color.RGBA{R: 238, G: 238, B: 238, A: 255}  // Primary text and icons
 	
-	// Terminal colors - Bright (monochrome)
-	WarpBrightBlack   = color.RGBA{R: 64, G: 64, B: 64, A: 255}     // #404040 Dark gray
-	WarpBrightBlue    = color.RGBA{R: 192, G: 192, B: 192, A: 255}  // #c0c0c0 Silver
-	WarpBrightCyan    = color.RGBA{R: 255, G: 255, B: 255, A: 255}  // #ffffff White
-	WarpBrightGreen   = color.RGBA{R: 192, G: 192, B: 192, A: 255}  // #c0c0c0 Silver
-	WarpBrightRed     = color.RGBA{R: 128, G: 128, B: 128, A: 255}  // #808080 Gray
-	WarpBrightMagenta = color.RGBA{R: 192, G: 192, B: 192, A: 255}  // #c0c0c0 Silver
-	WarpBrightWhite   = color.RGBA{R: 255, G: 255, B: 255, A: 255}  // #ffffff White
-	WarpBrightYellow  = color.RGBA{R: 192, G: 192, B: 192, A: 255}  // #c0c0c0 Silver
-	
-	// UI Component colors (monochrome)
-	WarpCard       = color.RGBA{R: 32, G: 32, B: 32, A: 255}      // Very dark gray
-	WarpCardHover  = color.RGBA{R: 80, G: 80, B: 80, A: 255}      // #505050 Medium dark gray
-	WarpBorder     = color.RGBA{R: 64, G: 64, B: 64, A: 255}      // #404040 Dark gray
-	WarpDisabled   = color.RGBA{R: 128, G: 128, B: 128, A: 255}   // #808080 Gray
-	WarpOverlay    = color.RGBA{R: 0, G: 0, B: 0, A: 180}         // Black overlay
-	
-	// Special button colors
-	WarpButtonPrimary   = color.RGBA{R: 255, G: 255, B: 255, A: 255}  // White for primary buttons
-	WarpButtonSecondary = color.RGBA{R: 64, G: 64, B: 64, A: 255}     // Dark gray for secondary
+	// Alpha variants for overlays
+	GeistGrayAlpha1 = color.RGBA{R: 255, G: 255, B: 255, A: 6}
+	GeistGrayAlpha2 = color.RGBA{R: 255, G: 255, B: 255, A: 13}
+	GeistGrayAlpha3 = color.RGBA{R: 255, G: 255, B: 255, A: 20}
+	GeistGrayAlpha4 = color.RGBA{R: 255, G: 255, B: 255, A: 31}
 )
 
 type MovieStreamTheme struct {
@@ -74,41 +60,45 @@ func (t *MovieStreamTheme) SetDark(dark bool) {
 func (t *MovieStreamTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	switch name {
 	case theme.ColorNameBackground:
-		return WarpBackground
+		return GeistBackground1
 	case theme.ColorNameButton:
-		return WarpBrightBlack // #404040 Dark gray buttons
+		return GeistGray7 // High contrast background for buttons
 	case theme.ColorNameDisabledButton:
-		return WarpCard // Very dark for disabled state
+		return GeistGray1 // Darker for disabled state
 	case theme.ColorNameForeground:
-		return WarpForeground
+		return GeistGray10 // Primary text and icons
+	case theme.ColorNameDisabled:
+		return GeistGray9 // Secondary text for disabled state
 	case theme.ColorNameHover:
-		return WarpRed // #808080 Gray for hover
+		return GeistGray8 // Brighter hover for high contrast buttons
+	case theme.ColorNamePressed:
+		return GeistGray6 // Slightly darker when pressed
 	case theme.ColorNameInputBackground:
-		return WarpBrightBlack // Match button background
+		return GeistGray1 // Component default background
 	case theme.ColorNamePrimary:
-		return WarpAccent
+		return GeistGray10 // Primary text and icons (white)
 	case theme.ColorNameFocus:
-		return WarpAccent // Silver focus
+		return GeistGray10 // High contrast white for focus
 	case theme.ColorNameSelection:
-		return WarpAccent // Silver selection
+		return GeistGray7 // High contrast background
 	case theme.ColorNameShadow:
 		return color.RGBA{R: 0, G: 0, B: 0, A: 150}
 	case theme.ColorNameError:
-		return WarpRed
+		return GeistGray9 // Secondary text (monochrome)
 	case theme.ColorNameSuccess:
-		return WarpAccent // Use silver for success
+		return GeistGray10 // Primary text (monochrome)
 	case theme.ColorNameWarning:
-		return WarpRed // Use gray for warning
+		return GeistGray9 // Secondary text (monochrome)
 	case theme.ColorNameHeaderBackground:
-		return WarpCard
+		return GeistBackground2
 	case theme.ColorNameInputBorder:
-		return WarpBorder
+		return GeistGray4 // Default border
 	case theme.ColorNameSeparator:
-		return WarpBorder
+		return GeistGray4 // Default border
 	case theme.ColorNameMenuBackground:
-		return WarpCard
+		return GeistGray1
 	case theme.ColorNameOverlayBackground:
-		return WarpCard
+		return GeistGray1
 	default:
 		return theme.DefaultTheme().Color(name, variant)
 	}
@@ -119,6 +109,7 @@ func (t *MovieStreamTheme) Font(style fyne.TextStyle) fyne.Resource {
 }
 
 func (t *MovieStreamTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	// Use default theme icons - they will automatically use our monochrome foreground color
 	return theme.DefaultTheme().Icon(name)
 }
 
@@ -149,40 +140,40 @@ func (t *MovieStreamTheme) Size(name fyne.ThemeSizeName) float32 {
 	}
 }
 
-// Helper functions to get Warp Dark colors
+// Helper functions to get Geist monochrome colors
 func GetBackgroundColor() color.Color {
-	return WarpBackground
+	return GeistBackground1
 }
 
 func GetCardColor() color.Color {
-	return WarpCard
+	return GeistGray1
 }
 
 func GetTextColor() color.Color {
-	return WarpForeground
+	return GeistGray10
 }
 
 func GetSecondaryTextColor() color.Color {
-	return WarpBrightBlack
+	return GeistGray9
 }
 
 func GetPrimaryColor() color.Color {
-	return WarpAccent
+	return GeistGray10
 }
 
 func GetAccentColor() color.Color {
-	return WarpBrightBlue
+	return GeistGray10
 }
 
 func GetSuccessColor() color.Color {
-	return WarpGreen
+	return GeistGray10
 }
 
 func GetWarningColor() color.Color {
-	return WarpYellow
+	return GeistGray9
 }
 
 func GetErrorColor() color.Color {
-	return WarpRed
+	return GeistGray9
 }
 

@@ -6,95 +6,78 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	
+	"github.com/gosthome/icons"
+	"github.com/gosthome/icons/fynico"
+	_ "github.com/gosthome/icons/fynico/templarian/mdi" // Import MDI icons
 )
 
-// Icon system using Fyne theme icons and clean symbols
+// Icon system using Material Design Icons
 const (
 	// Navigation
-	IconSearch      = "icon-search"
-	IconHome        = "icon-home"
-	IconBack        = "icon-back"
-	IconNext        = "icon-next"
-	IconMenu        = "icon-menu"
+	IconSearch      = "mdi:magnify"
+	IconHome        = "mdi:home"
+	IconBack        = "mdi:arrow-left"
+	IconNext        = "mdi:arrow-right"
+	IconMenu        = "mdi:menu"
 	
 	// Media
-	IconPlay        = "icon-play"
-	IconPause       = "icon-pause"
-	IconStop        = "icon-stop"
-	IconMovie       = "icon-movie"
-	IconTV          = "icon-tv"
-	IconVideo       = "icon-video"
+	IconPlay        = "mdi:play"
+	IconPause       = "mdi:pause"
+	IconStop        = "mdi:stop"
+	IconMovie       = "mdi:movie"
+	IconTV          = "mdi:television"
+	IconVideo       = "mdi:video"
 	
 	// Actions
-	IconDownload    = "icon-download"
-	IconUpload      = "icon-upload"
-	IconAdd         = "icon-add"
-	IconRemove      = "icon-remove"
-	IconDelete      = "icon-delete"
-	IconEdit        = "icon-edit"
-	IconSave        = "icon-save"
+	IconDownload    = "mdi:download"
+	IconUpload      = "mdi:upload"
+	IconAdd         = "mdi:plus"
+	IconRemove      = "mdi:minus"
+	IconDelete      = "mdi:delete"
+	IconEdit        = "mdi:pencil"
+	IconSave        = "mdi:content-save"
 	
 	// Status
-	IconCheck       = "icon-check"
-	IconCross       = "icon-cross"
-	IconInfo        = "icon-info"
-	IconWarning     = "icon-warning"
-	IconError       = "icon-error"
-	IconStar        = "icon-star"
+	IconCheck       = "mdi:check"
+	IconCross       = "mdi:close"
+	IconInfo        = "mdi:information"
+	IconWarning     = "mdi:alert"
+	IconError       = "mdi:alert-circle"
+	IconStar        = "mdi:star"
 	
 	// UI
-	IconSettings    = "icon-settings"
-	IconUser        = "icon-user"
-	IconFolder      = "icon-folder"
-	IconFile        = "icon-file"
-	IconClock       = "icon-clock"
-	IconCalendar    = "icon-calendar"
-	IconQueue       = "icon-queue"
-	IconHistory     = "icon-history"
+	IconSettings    = "mdi:cog"
+	IconUser        = "mdi:account"
+	IconFolder      = "mdi:folder"
+	IconFile        = "mdi:file"
+	IconClock       = "mdi:clock"
+	IconCalendar    = "mdi:calendar"
+	IconQueue       = "mdi:playlist-play"
+	IconHistory     = "mdi:history"
 )
 
-// CreateIconButton creates a button with Fyne icon
-func CreateIconButton(label string, iconName string, tapped func()) *widget.Button {
-	// Map icon names to Fyne theme icons
-	var icon fyne.Resource
-	switch iconName {
-	case IconSearch:
-		icon = theme.SearchIcon()
-	case IconSettings:
-		icon = theme.SettingsIcon()
-	case IconPlay:
-		icon = theme.MediaPlayIcon()
-	case IconDownload:
-		icon = theme.DownloadIcon()
-	case IconBack:
-		icon = theme.NavigateBackIcon()
-	case IconHome:
-		icon = theme.HomeIcon()
-	case IconMenu:
-		icon = theme.MenuIcon()
-	case IconDelete:
-		icon = theme.DeleteIcon()
-	case IconAdd:
-		icon = theme.ContentAddIcon()
-	case IconRemove:
-		icon = theme.ContentRemoveIcon()
-	case IconCheck:
-		icon = theme.ConfirmIcon()
-	case IconCross:
-		icon = theme.CancelIcon()
-	case IconInfo:
-		icon = theme.InfoIcon()
-	case IconWarning:
-		icon = theme.WarningIcon()
-	case IconFolder:
-		icon = theme.FolderIcon()
-	case IconFile:
-		icon = theme.FileIcon()
-	case IconQueue:
-		icon = theme.ListIcon()
-	case IconHistory:
-		icon = theme.HistoryIcon()
+// GetIconResource returns a themed icon resource from the icon name
+func GetIconResource(iconName string) fyne.Resource {
+	p, err := icons.Parse(iconName)
+	if err != nil {
+		// Fallback to theme icon
+		return theme.InfoIcon()
 	}
+	
+	r := fynico.Collections.Lookup(p.Collection, p.Icon)
+	if r == nil {
+		// Fallback to theme icon
+		return theme.InfoIcon()
+	}
+	
+	// Return the icon with theme foreground color
+	return theme.NewThemedResource(r)
+}
+
+// CreateIconButton creates a button with Material Design Icon
+func CreateIconButton(label string, iconName string, tapped func()) *widget.Button {
+	icon := GetIconResource(iconName)
 	
 	if icon != nil && label != "" {
 		return widget.NewButtonWithIcon(label, icon, tapped)
@@ -108,12 +91,6 @@ func CreateIconButton(label string, iconName string, tapped func()) *widget.Butt
 func CreateIconButtonWithImportance(label string, iconName string, importance widget.Importance, tapped func()) *widget.Button {
 	btn := CreateIconButton(label, iconName, tapped)
 	btn.Importance = importance
-	
-	// For high importance buttons in monochrome, use white background
-	if importance == widget.HighImportance {
-		// The theme will handle this
-	}
-	
 	return btn
 }
 
@@ -148,7 +125,7 @@ func CreateMovieCard(content ...fyne.CanvasObject) *fyne.Container {
 // CreateCardWithBorder creates a card with a border
 func CreateCardWithBorder(content ...fyne.CanvasObject) *fyne.Container {
 	bg := canvas.NewRectangle(GetCardColor())
-	border := canvas.NewRectangle(WarpBorder)
+	border := canvas.NewRectangle(GeistGray4) // Default border color
 	
 	cardContent := container.NewVBox(content...)
 	padded := container.NewPadded(cardContent)
@@ -193,27 +170,25 @@ func CreateSubtitle(text string) *widget.Label {
 	return label
 }
 
-// GetFyneIcon returns Fyne's built-in theme icons as fallback
-func GetFyneIcon(name string) fyne.Resource {
-	switch name {
-	case "search":
-		return theme.SearchIcon()
-	case "settings":
-		return theme.SettingsIcon()
-	case "play":
-		return theme.MediaPlayIcon()
-	case "download":
-		return theme.DownloadIcon()
-	case "back":
-		return theme.NavigateBackIcon()
-	case "home":
-		return theme.HomeIcon()
-	case "menu":
-		return theme.MenuIcon()
-	case "delete":
-		return theme.DeleteIcon()
-	default:
-		return theme.InfoIcon()
-	}
+// CreateIconLabel creates a label with an icon
+func CreateIconLabel(iconName string, text string) *fyne.Container {
+	icon := canvas.NewImageFromResource(GetIconResource(iconName))
+	icon.FillMode = canvas.ImageFillContain
+	icon.SetMinSize(fyne.NewSize(20, 20))
+	
+	label := widget.NewLabel(text)
+	
+	return container.NewHBox(icon, label)
+}
+
+// CreateTitleWithIcon creates a title with an icon
+func CreateTitleWithIcon(iconName string, text string) *fyne.Container {
+	icon := canvas.NewImageFromResource(GetIconResource(iconName))
+	icon.FillMode = canvas.ImageFillContain
+	icon.SetMinSize(fyne.NewSize(24, 24))
+	
+	title := CreateTitle(text)
+	
+	return container.NewHBox(icon, title)
 }
 

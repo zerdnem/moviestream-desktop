@@ -72,16 +72,15 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	backBtn.Importance = widget.LowImportance
 
 	// Modern title with accent color
-	titleText := CreateTitle(IconTV + " " + tvDetails.Name)
-	titleText.Alignment = fyne.TextAlignCenter
+	titleContainer := CreateTitleWithIcon(IconTV, tvDetails.Name)
 
 	// Compact info with icons
-	rating := fmt.Sprintf("⭐ %.1f/10", tvDetails.VoteAverage)
+	rating := fmt.Sprintf("★ %.1f/10", tvDetails.VoteAverage)
 	if tvDetails.VoteAverage == 0 {
-		rating = "⭐ N/A"
+		rating = "★ N/A"
 	}
-	infoText := fmt.Sprintf("%s | %s %s | %d Seasons",
-		rating, IconCalendar, tvDetails.FirstAirDate, len(tvDetails.Seasons))
+	infoText := fmt.Sprintf("%s | %s | %d Seasons",
+		rating, tvDetails.FirstAirDate, len(tvDetails.Seasons))
 	infoLabel := widget.NewLabel(infoText)
 	infoLabel.Alignment = fyne.TextAlignCenter
 
@@ -104,7 +103,7 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		content := container.NewVBox(
 			backBtn,
 			widget.NewSeparator(),
-			container.NewCenter(titleText),
+			container.NewCenter(titleContainer),
 			container.NewCenter(infoLabel),
 			widget.NewSeparator(),
 			CreateHeader("Overview"),
@@ -128,18 +127,11 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		}
 	})
 
-	if len(seasonOptions) > 0 {
-		seasonSelect.SetSelected(seasonOptions[0])
-	}
-
-	// Episodes scroll container
-	episodesScroll := container.NewVScroll(episodesList)
-
 	// Compact content layout
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		container.NewCenter(titleText),
+		container.NewCenter(titleContainer),
 		container.NewCenter(infoLabel),
 		widget.NewSeparator(),
 		CreateHeader("Overview"),
@@ -148,10 +140,15 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		CreateHeader("Episodes"),
 		seasonSelect,
 		widget.NewSeparator(),
-		episodesScroll,
+		episodesList,
 	)
 
 	currentWindow.SetContent(container.NewPadded(container.NewVScroll(content)))
+	
+	// Load first season after UI is set up
+	if len(seasonOptions) > 0 {
+		seasonSelect.SetSelected(seasonOptions[0])
+	}
 }
 
 // loadEpisodes loads and displays episodes for a specific season

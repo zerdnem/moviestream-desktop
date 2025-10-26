@@ -39,14 +39,13 @@ func ShowQueueView() {
 	clearBtn.Importance = widget.DangerImportance
 
 	// Modern header with accent color
-	title := CreateTitle(fmt.Sprintf("%s Queue (%d)", IconQueue, len(items)))
-	title.Alignment = fyne.TextAlignCenter
+	titleContainer := CreateTitleWithIcon(IconQueue, fmt.Sprintf("Queue (%d)", len(items)))
 
 	// Compact header layout
 	header := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		container.NewCenter(title),
+		container.NewCenter(titleContainer),
 		widget.NewSeparator(),
 	)
 

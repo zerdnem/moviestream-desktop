@@ -48,14 +48,13 @@ func ShowHistoryView() {
 	}
 
 	// Modern header with accent color
-	title := CreateTitle(fmt.Sprintf("%s History (%d)", IconHistory, len(items)))
-	title.Alignment = fyne.TextAlignCenter
+	titleContainer := CreateTitleWithIcon(IconHistory, fmt.Sprintf("History (%d)", len(items)))
 
 	// Compact header layout
 	headerWidgets := []fyne.CanvasObject{
 		backBtn,
 		widget.NewSeparator(),
-		container.NewCenter(title),
+		container.NewCenter(titleContainer),
 	}
 
 	if continueWatchingBtn != nil {
