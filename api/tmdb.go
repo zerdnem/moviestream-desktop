@@ -14,12 +14,13 @@ const (
 )
 
 type Movie struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Overview    string `json:"overview"`
-	ReleaseDate string `json:"release_date"`
-	PosterPath  string `json:"poster_path"`
-	VoteAverage float64 `json:"vote_average"`
+	ID           int     `json:"id"`
+	Title        string  `json:"title"`
+	Overview     string  `json:"overview"`
+	ReleaseDate  string  `json:"release_date"`
+	PosterPath   string  `json:"poster_path"`
+	BackdropPath string  `json:"backdrop_path"`
+	VoteAverage  float64 `json:"vote_average"`
 }
 
 type TVShow struct {
@@ -60,6 +61,7 @@ type TVDetails struct {
 	Overview     string   `json:"overview"`
 	FirstAirDate string   `json:"first_air_date"`
 	PosterPath   string   `json:"poster_path"`
+	BackdropPath string   `json:"backdrop_path"`
 	VoteAverage  float64  `json:"vote_average"`
 	Seasons      []Season `json:"seasons"`
 }
@@ -197,5 +199,13 @@ func GetPosterURL(posterPath string) string {
 		return ""
 	}
 	return "https://image.tmdb.org/t/p/w500" + posterPath
+}
+
+// GetBackdropURL returns the full URL for a backdrop image
+func GetBackdropURL(backdropPath string) string {
+	if backdropPath == "" {
+		return ""
+	}
+	return "https://image.tmdb.org/t/p/w1280" + backdropPath
 }
 

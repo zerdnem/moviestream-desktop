@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
 	"moviestream-gui/history"
@@ -9,6 +10,7 @@ import (
 	"moviestream-gui/queue"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -347,15 +349,31 @@ func createTVResults(tvShows []api.TVShow) fyne.CanvasObject {
 
 // showMovieDetails shows detailed view for a movie with watch/download options
 func showMovieDetails(movie api.Movie) {
-	// Sleek back button
-	backBtn := CreateIconButton(IconBack, "", func() {
+	// Sleek back button - FIX: correct parameter order (label, icon, func)
+	backBtn := CreateIconButton("Back", IconBack, func() {
 		GoBackToSearch()
 	})
 	backBtn.Importance = widget.LowImportance
 
-	// Hero title section
-	titleText := CreateLargeTitle(movie.Title)
-	titleText.Alignment = fyne.TextAlignLeading
+	// Hero title section with enhanced visibility on backdrop
+	titleText := canvas.NewText(movie.Title, GetTextColor())
+	titleText.TextSize = 28
+	titleText.Alignment = fyne.TextAlignCenter
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	
+	// Add a subtle glow effect with a semi-transparent background
+	cardColor := GetCardColor()
+	r, g, b, _ := cardColor.RGBA()
+	titleBg := canvas.NewRectangle(&color.NRGBA{
+		R: uint8(r >> 8),
+		G: uint8(g >> 8),
+		B: uint8(b >> 8),
+		A: 180,
+	})
+	titleContainer := container.NewStack(
+		titleBg,
+		container.NewPadded(titleText),
+	)
 
 	// Premium info display
 	rating := fmt.Sprintf("⭐ %.1f", movie.VoteAverage)
@@ -368,11 +386,24 @@ func showMovieDetails(movie api.Movie) {
 	}
 	infoText := fmt.Sprintf("%s  •  %s  •  Movie", rating, year)
 	infoLabel := widget.NewLabel(infoText)
+	infoLabel.Alignment = fyne.TextAlignCenter
 
-	// Overview section
-	overviewTitle := CreateHeader("Overview")
+	// Overview section with background for readability
 	overviewLabel := widget.NewLabel(movie.Overview)
 	overviewLabel.Wrapping = fyne.TextWrapWord
+	
+	cardColor2 := GetCardColor()
+	r2, g2, b2, _ := cardColor2.RGBA()
+	overviewBg := canvas.NewRectangle(&color.NRGBA{
+		R: uint8(r2 >> 8),
+		G: uint8(g2 >> 8),
+		B: uint8(b2 >> 8),
+		A: 200,
+	})
+	overviewContainer := container.NewStack(
+		overviewBg,
+		container.NewPadded(overviewLabel),
+	)
 
 	// Premium action buttons - larger and more prominent
 	watchBtn := CreateIconButtonWithImportance("Watch Now", IconPlay, widget.HighImportance, func() {
@@ -392,18 +423,20 @@ func showMovieDetails(movie api.Movie) {
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		titleText,
-		infoLabel,
+		container.NewCenter(titleContainer),
+		container.NewCenter(infoLabel),
 		watchBtn,
 		widget.NewSeparator(),
-		overviewTitle,
-		overviewLabel,
+		CreateHeader("Overview"),
+		overviewContainer,
 		widget.NewSeparator(),
 		container.NewGridWithColumns(2, downloadBtn, addToQueueBtn),
 	)
 
-	scrollContent := container.NewVScroll(content)
-	currentWindow.SetContent(container.NewPadded(scrollContent))
+	// Use parallax background with backdrop image
+	backdropURL := api.GetBackdropURL(movie.BackdropPath)
+	parallaxView := CreateParallaxView(backdropURL, content)
+	currentWindow.SetContent(parallaxView)
 }
 
 // addMovieToQueue adds a movie to the playback queue

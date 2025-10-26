@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"image/color"
 	"moviestream-gui/api"
 	"moviestream-gui/downloader"
 	"moviestream-gui/history"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -71,8 +73,25 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	})
 	backBtn.Importance = widget.LowImportance
 
-	// Modern title with accent color
-	titleContainer := CreateTitleWithIcon(IconTV, tvDetails.Name)
+	// Modern title with accent color - make it more prominent on backdrop
+	titleText := canvas.NewText(tvDetails.Name, GetTextColor())
+	titleText.TextSize = 28
+	titleText.Alignment = fyne.TextAlignCenter
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	
+	// Add a subtle glow effect with a semi-transparent background
+	cardColor := GetCardColor()
+	r, g, b, _ := cardColor.RGBA()
+	glowBg := canvas.NewRectangle(&color.NRGBA{
+		R: uint8(r >> 8),
+		G: uint8(g >> 8),
+		B: uint8(b >> 8),
+		A: 180,
+	})
+	glowContainer := container.NewStack(
+		glowBg,
+		container.NewPadded(titleText),
+	)
 
 	// Compact info with icons
 	rating := fmt.Sprintf("★ %.1f/10", tvDetails.VoteAverage)
@@ -84,9 +103,22 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	infoLabel := widget.NewLabel(infoText)
 	infoLabel.Alignment = fyne.TextAlignCenter
 
-	// Overview
+	// Overview with background for readability
 	overviewLabel := widget.NewLabel(tvDetails.Overview)
 	overviewLabel.Wrapping = fyne.TextWrapWord
+	
+	cardColor2 := GetCardColor()
+	r2, g2, b2, _ := cardColor2.RGBA()
+	overviewBg := canvas.NewRectangle(&color.NRGBA{
+		R: uint8(r2 >> 8),
+		G: uint8(g2 >> 8),
+		B: uint8(b2 >> 8),
+		A: 200,
+	})
+	overviewContainer := container.NewStack(
+		overviewBg,
+		container.NewPadded(overviewLabel),
+	)
 
 	// Season selector
 	var seasonOptions []string
@@ -103,15 +135,19 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		content := container.NewVBox(
 			backBtn,
 			widget.NewSeparator(),
-			container.NewCenter(titleContainer),
+			container.NewCenter(glowContainer),
 			container.NewCenter(infoLabel),
 			widget.NewSeparator(),
 			CreateHeader("Overview"),
-			overviewLabel,
+			overviewContainer,
 			widget.NewSeparator(),
 			widget.NewLabel("No seasons available"),
 		)
-		currentWindow.SetContent(container.NewPadded(container.NewVScroll(content)))
+		
+		// Use parallax background
+		backdropURL := api.GetBackdropURL(tvDetails.BackdropPath)
+		parallaxView := CreateParallaxView(backdropURL, content)
+		currentWindow.SetContent(parallaxView)
 		return
 	}
 
@@ -131,11 +167,11 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 	content := container.NewVBox(
 		backBtn,
 		widget.NewSeparator(),
-		container.NewCenter(titleContainer),
+		container.NewCenter(glowContainer),
 		container.NewCenter(infoLabel),
 		widget.NewSeparator(),
 		CreateHeader("Overview"),
-		overviewLabel,
+		overviewContainer,
 		widget.NewSeparator(),
 		CreateHeader("Episodes"),
 		seasonSelect,
@@ -143,7 +179,10 @@ func showTVDetailsUI(tvDetails *api.TVDetails) {
 		episodesList,
 	)
 
-	currentWindow.SetContent(container.NewPadded(container.NewVScroll(content)))
+	// Use parallax background with backdrop image
+	backdropURL := api.GetBackdropURL(tvDetails.BackdropPath)
+	parallaxView := CreateParallaxView(backdropURL, content)
+	currentWindow.SetContent(parallaxView)
 	
 	// Load first season after UI is set up
 	if len(seasonOptions) > 0 {
