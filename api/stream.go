@@ -15,10 +15,11 @@ const (
 	MoviesBaseURL = "https://111movies.com"
 )
 
-// StreamInfo contains stream URL and subtitle URLs
+// StreamInfo contains stream URL, subtitle URLs, and available audio tracks
 type StreamInfo struct {
 	StreamURL    string
 	SubtitleURLs []SubtitleTrack
+	AudioTracks  []AudioTrack
 }
 
 type SubtitleTrack struct {
@@ -138,6 +139,9 @@ func GetStreamURL(tmdbID int, contentType string, season, episode int) (*StreamI
 	}
 	
 	fmt.Printf("DEBUG: Found %d audio tracks\n", len(audioTracks))
+	for i, track := range audioTracks {
+		fmt.Printf("DEBUG: Track %d: %s - %s\n", i+1, track.Name, track.Description)
+	}
 	fmt.Printf("DEBUG: Using first track: %s - %s\n", audioTracks[0].Name, audioTracks[0].Description)
 
 	// Get stream URL with first audio track
@@ -149,10 +153,11 @@ func GetStreamURL(tmdbID int, contentType string, season, episode int) (*StreamI
 	
 	fmt.Printf("DEBUG: Successfully got stream URL: %s\n", streamURL)
 
-	// Return stream info (no subtitles from /to/ method yet)
+	// Return stream info with all available audio tracks
 	return &StreamInfo{
 		StreamURL:    streamURL,
 		SubtitleURLs: []SubtitleTrack{},
+		AudioTracks:  audioTracks,
 	}, nil
 }
 
@@ -197,6 +202,47 @@ func getAudioTracks(toPath string) ([]AudioTrack, error) {
 	}
 
 	return tracks, nil
+}
+
+// GetStreamURLWithAudioTrack gets the stream URL with a specific audio track
+func GetStreamURLWithAudioTrack(tmdbID int, contentType string, season, episode int, audioTrackData string) (string, error) {
+	var embedURL string
+	
+	if contentType == "tv" {
+		embedURL = fmt.Sprintf("%s/tv/%d/%d/%d", MoviesBaseURL, tmdbID, season, episode)
+	} else {
+		embedURL = fmt.Sprintf("%s/movie/%d", MoviesBaseURL, tmdbID)
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", embedURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	htmlContent := string(body)
+	
+	// Extract /to/ path from HTML
+	toPath := extractToPath(htmlContent)
+	if toPath == "" {
+		return "", fmt.Errorf("failed to extract /to/ path from HTML")
+	}
+	
+	// Get stream URL with specified audio track
+	return getStreamAndVTTs(toPath, audioTrackData)
 }
 
 // getStreamAndVTTs fetches the m3u8 stream URL

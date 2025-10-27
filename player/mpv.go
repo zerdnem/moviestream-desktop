@@ -18,7 +18,12 @@ func PlayWithMPV(streamURL string, title string, subtitleURLs []string) error {
 // PlayWithMPVAndCallback plays a stream URL using the user's selected video player with optional callback when playback ends
 func PlayWithMPVAndCallback(streamURL string, title string, subtitleURLs []string, onEnd OnPlaybackEndCallback) error {
 	// Use the new player launcher that respects user's player choice
-	return PlayWithPlayer(streamURL, title, subtitleURLs, onEnd)
+	return PlayWithPlayer(streamURL, title, subtitleURLs, nil, onEnd)
+}
+
+// PlayWithMPVAndAudio plays a stream URL with external audio tracks and subtitles
+func PlayWithMPVAndAudio(streamURL string, title string, subtitleURLs []string, audioTrackURLs []string, onEnd OnPlaybackEndCallback) error {
+	return PlayWithPlayer(streamURL, title, subtitleURLs, audioTrackURLs, onEnd)
 }
 
 // PlayWithMPVLegacy is the original MPV-specific implementation (kept for reference)

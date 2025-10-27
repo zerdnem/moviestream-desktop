@@ -603,6 +603,11 @@ func showMovieDetails(movie api.Movie) {
 	watchBtn := CreateIconButtonWithImportance("Watch Now", IconPlay, widget.HighImportance, func() {
 		watchMovie(movie)
 	})
+	
+	watchWithAudioBtn := CreateIconButton("Watch with Audio Tracks", IconPlay, func() {
+		watchMovieWithAudioTracks(movie)
+	})
+	watchWithAudioBtn.Importance = widget.MediumImportance
 
 	downloadBtn := CreateIconButton("Download", IconDownload, func() {
 		downloadMovie(movie)
@@ -622,6 +627,7 @@ func showMovieDetails(movie api.Movie) {
 		container.NewCenter(titleContainer),
 		container.NewCenter(infoLabel),
 		watchBtn,
+		watchWithAudioBtn,
 		widget.NewSeparator(),
 		CreateHeader("Overview"),
 		overviewContainer,
@@ -721,6 +727,57 @@ func watchMovie(movie api.Movie) {
 			fmt.Printf("   📋 Queue: %d item(s) waiting\n", q.Size())
 		}
 		fmt.Println()
+	}()
+}
+
+// watchMovieWithAudioTracks starts playing a movie with additional audio tracks
+func watchMovieWithAudioTracks(movie api.Movie) {
+	progress := dialog.NewProgressInfinite("Loading Stream", 
+		"Fetching stream URL...\nThis may take 10-15 seconds for browser automation", 
+		currentWindow)
+	progress.Show()
+
+	go func() {
+		streamInfo, err := api.GetStreamURL(movie.ID, "movie", 0, 0)
+		
+		// Always hide progress
+		fyne.Do(func() {
+			progress.Hide()
+		})
+
+		if err != nil {
+			errorMsg := fmt.Sprintf("Failed to get stream:\n%v\n\nTips:\n• This movie might not be available on this platform\n• Try a different, more popular movie\n• Some older or less common titles may not work", err)
+			dialog.ShowError(fmt.Errorf(errorMsg), currentWindow)
+			return
+		}
+
+		// Extract subtitle URLs
+		var subtitleURLs []string
+		for _, sub := range streamInfo.SubtitleURLs {
+			subtitleURLs = append(subtitleURLs, sub.URL)
+		}
+
+		// Create callback for queue auto-play
+		onEndCallback := func() {
+			playNextInQueue()
+		}
+
+		// Show audio track dialog with available tracks from API
+		fyne.Do(func() {
+			ShowAudioTrackDialog(
+				movie.Title,
+				movie.ID,
+				0, 0, // Not a TV show
+				streamInfo.StreamURL,
+				subtitleURLs,
+				streamInfo.AudioTracks,
+				onEndCallback,
+			)
+		})
+		
+		// Record in watch history
+		h := history.Get()
+		h.AddMovie(movie.ID, movie.Title)
 	}()
 }
 
