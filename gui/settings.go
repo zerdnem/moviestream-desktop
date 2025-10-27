@@ -89,6 +89,15 @@ func ShowSettingsDialog() {
 	autoNextCheck := widget.NewCheck("Enable auto-play", nil)
 	autoNextCheck.SetChecked(currentSettings.AutoNext)
 	
+	// Auto-close player toggle
+	autoCloseLabel := CreateHeader("Player Behavior")
+	autoCloseCheck := widget.NewCheck("Auto-close player when finished", nil)
+	autoCloseCheck.SetChecked(currentSettings.AutoClosePlayer)
+	
+	// Fullscreen toggle
+	fullscreenCheck := widget.NewCheck("Start in fullscreen mode", nil)
+	fullscreenCheck.SetChecked(currentSettings.Fullscreen)
+	
 	// Compact info text
 	infoText := widget.NewLabel("Settings apply when playing content")
 	infoText.Wrapping = fyne.TextWrapWord
@@ -113,6 +122,8 @@ func ShowSettingsDialog() {
 			AudioLanguage:    settings.GetLanguageCode(audioSelect.Selected),
 			AutoNext:         autoNextCheck.Checked,
 			VideoPlayer:      selectedPlayerID,
+			AutoClosePlayer:  autoCloseCheck.Checked,
+			Fullscreen:       fullscreenCheck.Checked,
 		}
 		
 		settings.Save(newSettings)
@@ -134,6 +145,10 @@ func ShowSettingsDialog() {
 		autoNextLabel,
 		autoNextCheck,
 		widget.NewSeparator(),
+		autoCloseLabel,
+		autoCloseCheck,
+		fullscreenCheck,
+		widget.NewSeparator(),
 		infoText,
 		widget.NewSeparator(),
 		saveBtn,
@@ -141,7 +156,7 @@ func ShowSettingsDialog() {
 	
 	// Create modern custom dialog
 	customDialog := dialog.NewCustom("Settings", "Close", formWithButtons, currentWindow)
-	customDialog.Resize(fyne.NewSize(420, 480))
+	customDialog.Resize(fyne.NewSize(420, 540))
 	customDialog.Show()
 }
 

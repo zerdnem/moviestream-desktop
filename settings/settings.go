@@ -10,6 +10,8 @@ type Settings struct {
 	AudioLanguage    string // e.g., "en", "es", "fr", "de", etc.
 	AutoNext         bool   // Auto-play next episode for TV shows
 	VideoPlayer      string // Video player ID (e.g., "mpv", "vlc", "mpc-hc", "potplayer")
+	AutoClosePlayer  bool   // Auto-close video player when playback finishes
+	Fullscreen       bool   // Start video player in fullscreen mode
 }
 
 var (
@@ -37,6 +39,8 @@ func Load() *Settings {
 		AudioLanguage:    prefs.StringWithFallback("audio_language", "en"),
 		AutoNext:         prefs.BoolWithFallback("auto_next", false),
 		VideoPlayer:      prefs.StringWithFallback("video_player", "mpv"),
+		AutoClosePlayer:  prefs.BoolWithFallback("auto_close_player", true),
+		Fullscreen:       prefs.BoolWithFallback("fullscreen", false),
 	}
 	
 	return settings
@@ -53,6 +57,8 @@ func Save(settings *Settings) {
 	prefs.SetString("audio_language", settings.AudioLanguage)
 	prefs.SetBool("auto_next", settings.AutoNext)
 	prefs.SetString("video_player", settings.VideoPlayer)
+	prefs.SetBool("auto_close_player", settings.AutoClosePlayer)
+	prefs.SetBool("fullscreen", settings.Fullscreen)
 	
 	currentSettings = settings
 }
@@ -72,6 +78,8 @@ func GetDefaults() *Settings {
 		AudioLanguage:    "en",
 		AutoNext:         false,
 		VideoPlayer:      "mpv",
+		AutoClosePlayer:  true,
+		Fullscreen:       false,
 	}
 }
 

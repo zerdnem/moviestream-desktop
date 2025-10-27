@@ -48,11 +48,22 @@ func launchMPV(exePath, streamURL, title string, subtitleURLs []string, audioTra
 		streamURL,
 		fmt.Sprintf("--title=%s", title),
 		"--force-window=immediate",
-		"--keep-open=yes",
 		"--osd-level=1",
 		fmt.Sprintf("--slang=%s,%s,eng,english", userSettings.SubtitleLanguage, userSettings.SubtitleLanguage+"g"),
 		fmt.Sprintf("--alang=%s,%s,eng,english", userSettings.AudioLanguage, userSettings.AudioLanguage+"g"),
 		"--sub-auto=all",
+	}
+
+	// Add keep-open option based on user setting
+	if userSettings.AutoClosePlayer {
+		args = append(args, "--keep-open=no")
+	} else {
+		args = append(args, "--keep-open=yes")
+	}
+
+	// Add fullscreen option if enabled
+	if userSettings.Fullscreen {
+		args = append(args, "--fullscreen")
 	}
 
 	// Add external audio tracks if provided
@@ -104,6 +115,16 @@ func launchVLC(exePath, streamURL, title string, subtitleURLs []string, audioTra
 		fmt.Sprintf("--meta-title=%s", title),
 		fmt.Sprintf("--sub-language=%s", userSettings.SubtitleLanguage),
 		fmt.Sprintf("--audio-language=%s", userSettings.AudioLanguage),
+	}
+
+	// Add auto-close flag if enabled
+	if userSettings.AutoClosePlayer {
+		args = append(args, "--play-and-exit")
+	}
+
+	// Add fullscreen option if enabled
+	if userSettings.Fullscreen {
+		args = append(args, "--fullscreen")
 	}
 
 	var tempFiles []string
@@ -171,7 +192,18 @@ func launchVLC(exePath, streamURL, title string, subtitleURLs []string, audioTra
 
 // launchMPCHC launches MPC-HC player
 func launchMPCHC(exePath, streamURL, title string, subtitleURLs []string, audioTrackURLs []string, onEnd OnPlaybackEndCallback) error {
+	userSettings := settings.Get()
 	args := []string{streamURL}
+
+	// Add auto-close flag if enabled
+	if userSettings.AutoClosePlayer {
+		args = append(args, "/close")
+	}
+
+	// Add fullscreen option if enabled
+	if userSettings.Fullscreen {
+		args = append(args, "/fullscreen")
+	}
 
 	var tempFiles []string
 	
@@ -224,6 +256,16 @@ func launchMPCHC(exePath, streamURL, title string, subtitleURLs []string, audioT
 func launchPotPlayer(exePath, streamURL, title string, subtitleURLs []string, audioTrackURLs []string, onEnd OnPlaybackEndCallback) error {
 	userSettings := settings.Get()
 	args := []string{streamURL}
+
+	// Add auto-close flag if enabled
+	if userSettings.AutoClosePlayer {
+		args = append(args, "/close")
+	}
+
+	// Add fullscreen option if enabled
+	if userSettings.Fullscreen {
+		args = append(args, "/fullscreen")
+	}
 
 	var tempFiles []string
 
