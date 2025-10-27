@@ -390,6 +390,26 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 			}
 		}
 
+		// Check if subtitles are available
+		if len(subtitleURLs) == 0 {
+			// Auto-download subtitles
+			fyne.Do(func() {
+				AutoDownloadAndPlaySubtitles(
+					title,
+					tvID,
+					season, episode,
+					streamInfo.StreamURL,
+					onEndCallback,
+				)
+			})
+			
+			// Record in watch history (will be played after subtitle download)
+			h := history.Get()
+			h.AddEpisode(tvID, showName, season, episode, episodeName)
+			return
+		}
+
+		// Play with subtitles
 		if err := player.PlayWithMPVAndCallback(streamInfo.StreamURL, title, subtitleURLs, onEndCallback); err != nil {
 			dialog.ShowError(err, currentWindow)
 			return
@@ -401,11 +421,7 @@ func watchEpisodeInternal(tvID, season, episode int, showName, episodeName strin
 
 		// Print status to console instead of showing dialog
 		fmt.Printf("\n▶ Playing: %s - S%dE%d - %s\n", showName, season, episode, episodeName)
-		if len(subtitleURLs) > 0 {
-			fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
-		} else {
-			fmt.Printf("   ⚠ No subtitles found\n")
-		}
+		fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
 		
 		if userSettings.AutoNext && !autoNextCancelled {
 			fmt.Printf("   ▶ Auto-next enabled - Next episode will play automatically\n")

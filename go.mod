@@ -8,6 +8,8 @@ require (
 	fyne.io/fyne/v2 v2.7.0
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
+	github.com/gosthome/icons v0.2.0
+	github.com/gosthome/icons/fynico v0.2.0
 )
 
 require (
@@ -30,8 +32,6 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/gosthome/icons v0.2.0 // indirect
-	github.com/gosthome/icons/fynico v0.2.0 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
 	github.com/hack-pad/safejs v0.1.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect

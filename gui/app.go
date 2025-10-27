@@ -683,6 +683,26 @@ func watchMovie(movie api.Movie) {
 			playNextInQueue()
 		}
 
+		// Check if subtitles are available
+		if len(subtitleURLs) == 0 {
+			// Auto-download subtitles
+			fyne.Do(func() {
+				AutoDownloadAndPlaySubtitles(
+					movie.Title,
+					movie.ID,
+					0, 0, // Not a TV show
+					streamInfo.StreamURL,
+					onEndCallback,
+				)
+			})
+			
+			// Record in watch history (will be played after subtitle download)
+			h := history.Get()
+			h.AddMovie(movie.ID, movie.Title)
+			return
+		}
+
+		// Play with subtitles
 		if err := player.PlayWithMPVAndCallback(streamInfo.StreamURL, movie.Title, subtitleURLs, onEndCallback); err != nil {
 			dialog.ShowError(err, currentWindow)
 			return
@@ -694,11 +714,7 @@ func watchMovie(movie api.Movie) {
 
 		// Print status to console instead of showing dialog
 		fmt.Printf("\n▶ Playing: %s\n", movie.Title)
-		if len(subtitleURLs) > 0 {
-			fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
-		} else {
-			fmt.Printf("   ⚠ No subtitles found\n")
-		}
+		fmt.Printf("   ✓ %d subtitle track(s) loaded\n", len(subtitleURLs))
 		
 		q := queue.Get()
 		if !q.IsEmpty() {
