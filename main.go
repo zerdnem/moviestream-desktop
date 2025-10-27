@@ -8,7 +8,6 @@ import (
 	
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/theme"
 )
 
 func main() {
@@ -27,8 +26,9 @@ func main() {
 	
 	myWindow := myApp.NewWindow("MovieStream")
 	
-	// Set application icon using theme icon
-	myWindow.SetIcon(theme.MediaVideoIcon())
+	// Set application icon that adapts to system theme
+	// Dark icon for light mode, light icon for dark mode
+	myWindow.SetIcon(gui.GetAdaptiveIcon())
 	
 	// Create and show the main GUI
 	gui.CreateMainUI(myWindow)
