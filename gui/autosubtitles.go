@@ -31,17 +31,33 @@ func AutoDownloadAndPlaySubtitles(
 		results, err := manager.SearchSubtitles(title, tmdbID, season, episode)
 		
 		if err != nil || len(results) == 0 {
-			// No subtitles found - play without subtitles
+			// No subtitles found - ask user if they want to continue
 			fyne.Do(func() {
 				progress.Hide()
-				fmt.Printf("⚠ No subtitles found. Playing without subtitles.\n")
+				fmt.Printf("⚠ No subtitles found.\n")
 				
-				if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
-					dialog.ShowError(err, currentWindow)
-				} else {
-					fmt.Printf("\n▶ Playing: %s\n", title)
-					fmt.Printf("   ⚠ No subtitles loaded\n\n")
-				}
+				confirmDialog := dialog.NewConfirm(
+					"No Subtitles Found",
+					"No subtitles were found for this content.\n\nWould you like to play without subtitles?",
+					func(play bool) {
+						if play {
+							// User wants to play without subtitles
+							if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
+								dialog.ShowError(err, currentWindow)
+							} else {
+								fmt.Printf("\n▶ Playing: %s\n", title)
+								fmt.Printf("   ⚠ No subtitles loaded\n\n")
+							}
+						} else {
+							// User cancelled
+							fmt.Println("✗ Playback cancelled by user")
+						}
+					},
+					currentWindow,
+				)
+				confirmDialog.SetDismissText("Cancel")
+				confirmDialog.SetConfirmText("Play Without Subtitles")
+				confirmDialog.Show()
 			})
 			return
 		}
@@ -76,14 +92,30 @@ func AutoDownloadAndPlaySubtitles(
 			// Shouldn't happen, but handle it
 			fyne.Do(func() {
 				progress.Hide()
-				fmt.Printf("⚠ No valid subtitles found. Playing without subtitles.\n")
+				fmt.Printf("⚠ No valid subtitles found.\n")
 				
-				if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
-					dialog.ShowError(err, currentWindow)
-				} else {
-					fmt.Printf("\n▶ Playing: %s\n", title)
-					fmt.Printf("   ⚠ No subtitles loaded\n\n")
-				}
+				confirmDialog := dialog.NewConfirm(
+					"No Valid Subtitles",
+					"No valid subtitles were found for this content.\n\nWould you like to play without subtitles?",
+					func(play bool) {
+						if play {
+							// User wants to play without subtitles
+							if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
+								dialog.ShowError(err, currentWindow)
+							} else {
+								fmt.Printf("\n▶ Playing: %s\n", title)
+								fmt.Printf("   ⚠ No subtitles loaded\n\n")
+							}
+						} else {
+							// User cancelled
+							fmt.Println("✗ Playback cancelled by user")
+						}
+					},
+					currentWindow,
+				)
+				confirmDialog.SetDismissText("Cancel")
+				confirmDialog.SetConfirmText("Play Without Subtitles")
+				confirmDialog.Show()
 			})
 			return
 		}
@@ -131,15 +163,31 @@ func AutoDownloadAndPlaySubtitles(
 							addic7edSearchProgress.Hide()
 							
 							if addic7edErr != nil || len(addic7edResults) == 0 {
-								// Addic7ed also failed - play without subtitles
-								fmt.Println("⚠ Addic7ed also failed. Playing without subtitles.")
+								// Addic7ed also failed - ask user
+								fmt.Println("⚠ Addic7ed also failed.")
 								
-								if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
-									dialog.ShowError(err, currentWindow)
-								} else {
-									fmt.Printf("\n▶ Playing: %s\n", title)
-									fmt.Printf("   ⚠ No subtitles loaded\n\n")
-								}
+								confirmDialog := dialog.NewConfirm(
+									"Subtitle Download Failed",
+									"Both OpenSubtitles and Addic7ed failed to provide subtitles.\n\nWould you like to play without subtitles?",
+									func(play bool) {
+										if play {
+											// User wants to play without subtitles
+											if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
+												dialog.ShowError(err, currentWindow)
+											} else {
+												fmt.Printf("\n▶ Playing: %s\n", title)
+												fmt.Printf("   ⚠ No subtitles loaded\n\n")
+											}
+										} else {
+											// User cancelled
+											fmt.Println("✗ Playback cancelled by user")
+										}
+									},
+									currentWindow,
+								)
+								confirmDialog.SetDismissText("Cancel")
+								confirmDialog.SetConfirmText("Play Without Subtitles")
+								confirmDialog.Show()
 								return
 							}
 							
@@ -158,15 +206,31 @@ func AutoDownloadAndPlaySubtitles(
 									addic7edDownloadProgress.Hide()
 									
 									if addic7edDownloadErr != nil {
-										// Both sources failed - play without subtitles
-										fmt.Printf("⚠ Both sources failed. Playing without subtitles.\n")
+										// Both sources failed - ask user
+										fmt.Printf("⚠ Both sources failed.\n")
 										
-										if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
-											dialog.ShowError(err, currentWindow)
-										} else {
-											fmt.Printf("\n▶ Playing: %s\n", title)
-											fmt.Printf("   ⚠ No subtitles loaded\n\n")
-										}
+										confirmDialog := dialog.NewConfirm(
+											"All Subtitle Downloads Failed",
+											"Failed to download subtitles from both OpenSubtitles and Addic7ed.\n\nWould you like to play without subtitles?",
+											func(play bool) {
+												if play {
+													// User wants to play without subtitles
+													if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
+														dialog.ShowError(err, currentWindow)
+													} else {
+														fmt.Printf("\n▶ Playing: %s\n", title)
+														fmt.Printf("   ⚠ No subtitles loaded\n\n")
+													}
+												} else {
+													// User cancelled
+													fmt.Println("✗ Playback cancelled by user")
+												}
+											},
+											currentWindow,
+										)
+										confirmDialog.SetDismissText("Cancel")
+										confirmDialog.SetConfirmText("Play Without Subtitles")
+										confirmDialog.Show()
 									} else {
 										// Success with Addic7ed!
 										if err := player.PlayWithMPVAndCallback(streamURL, title, []string{addic7edPath}, onEnd); err != nil {
@@ -181,13 +245,31 @@ func AutoDownloadAndPlaySubtitles(
 						})
 					}()
 				} else {
-					// Can't try alternative - play without subtitles
-					if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
-						dialog.ShowError(err, currentWindow)
-					} else {
-						fmt.Printf("\n▶ Playing: %s\n", title)
-						fmt.Printf("   ⚠ No subtitles loaded\n\n")
-					}
+					// Can't try alternative - ask user
+					fmt.Println("⚠ Subtitle download failed.")
+					
+					confirmDialog := dialog.NewConfirm(
+						"Subtitle Download Failed",
+						"Failed to download subtitles.\n\nWould you like to play without subtitles?",
+						func(play bool) {
+							if play {
+								// User wants to play without subtitles
+								if err := player.PlayWithMPVAndCallback(streamURL, title, []string{}, onEnd); err != nil {
+									dialog.ShowError(err, currentWindow)
+								} else {
+									fmt.Printf("\n▶ Playing: %s\n", title)
+									fmt.Printf("   ⚠ No subtitles loaded\n\n")
+								}
+							} else {
+								// User cancelled
+								fmt.Println("✗ Playback cancelled by user")
+							}
+						},
+						currentWindow,
+					)
+					confirmDialog.SetDismissText("Cancel")
+					confirmDialog.SetConfirmText("Play Without Subtitles")
+					confirmDialog.Show()
 				}
 				return
 			}
