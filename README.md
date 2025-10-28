@@ -2,6 +2,16 @@
 
 A desktop application for searching and streaming movies and TV shows, built with Go and Fyne.
 
+## Screenshots
+
+<div align="center">
+  <img src="screenshots/image.png" alt="MovieStream Screenshot 1" width="800"/>
+  <img src="screenshots/image1.png" alt="MovieStream Screenshot 2" width="800"/>
+  <img src="screenshots/image2.png" alt="MovieStream Screenshot 3" width="800"/>
+  <img src="screenshots/image3.png" alt="MovieStream Screenshot 4" width="800"/>
+  <img src="screenshots/image4.png" alt="MovieStream Screenshot 5" width="800"/>
+</div>
+
 ## Features
 
 - 🔍 Search for movies and TV shows using TMDb database
