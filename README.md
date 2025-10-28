@@ -168,18 +168,47 @@ This project uses GitHub Actions for continuous integration and deployment:
 
 #### Automated Builds (GitHub Actions)
 
-When you create a new release on GitHub, it will automatically build binaries for:
-- Windows (amd64)
-- Linux (amd64)
-- macOS (amd64 and arm64)
+When you push a version tag, it will **automatically**:
+1. Create a GitHub release
+2. Build binaries for all platforms:
+   - Windows (amd64) - `.exe` file
+   - Linux (amd64)
+   - macOS (amd64 and arm64)
+3. Attach all binaries to the release
 
-**To create a release with automatic builds:**
-1. Go to your GitHub repository
-2. Click on "Releases" → "Create a new release"
-3. Create a new tag (e.g., `v1.0.0`)
-4. Fill in the release title and description
-5. Click "Publish release"
-6. The binaries will be automatically built and attached to the release
+**Option 1: Using the Release Script (Easiest)**
+
+For Linux/macOS:
+```bash
+chmod +x create-release.sh
+./create-release.sh
+```
+
+For Windows (PowerShell):
+```powershell
+.\create-release.ps1
+```
+
+The script will:
+- Validate your version format
+- Create and push a git tag
+- Automatically trigger the release workflow
+- Show you where to track progress
+
+**Option 2: Manual Tag Creation**
+
+```bash
+# Create and push a version tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+That's it! GitHub Actions will automatically:
+- Create the release on GitHub
+- Build Windows `.exe` and other platform binaries
+- Attach them to the release
+
+View the progress at: https://github.com/zerdnem/moviestream-desktop/actions
 
 ### Manual Builds
 

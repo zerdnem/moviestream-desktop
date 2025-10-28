@@ -1,8 +1,9 @@
 name: Build and Release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
@@ -11,9 +12,57 @@ on:
         default: 'v1.0.0'
 
 jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          release_name: MovieStream Desktop ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## MovieStream Desktop ${{ steps.get_version.outputs.VERSION }}
+            
+            ### 📦 Downloads
+            Download the binary for your platform below:
+            
+            - **Windows (64-bit)**: `moviestream-windows-amd64.exe`
+            - **Linux (64-bit)**: `moviestream-linux-amd64`
+            - **macOS (Intel)**: `moviestream-macos-amd64`
+            - **macOS (Apple Silicon)**: `moviestream-macos-arm64`
+            
+            ### 🚀 Installation
+            1. Download the appropriate binary for your system
+            2. Make it executable (Linux/macOS): `chmod +x moviestream-*`
+            3. Run the application
+            
+            ### ⚠️ Prerequisites
+            - MPV Player must be installed on your system
+            - See [README](https://github.com/zerdnem/moviestream-desktop#prerequisites) for detailed installation instructions
+            
+            ### 📝 Changes
+            See the commits since the last release for details.
+          draft: false
+          prerelease: false
+
   build-windows:
     name: Build for Windows
     runs-on: windows-latest
+    needs: create-release
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,12 +88,11 @@ jobs:
           path: moviestream-windows-amd64.exe
 
       - name: Upload to Release
-        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./moviestream-windows-amd64.exe
           asset_name: moviestream-windows-amd64.exe
           asset_content_type: application/octet-stream
@@ -52,6 +100,7 @@ jobs:
   build-linux:
     name: Build for Linux
     runs-on: ubuntu-latest
+    needs: create-release
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,12 +128,11 @@ jobs:
           path: moviestream-linux-amd64
 
       - name: Upload to Release
-        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./moviestream-linux-amd64
           asset_name: moviestream-linux-amd64
           asset_content_type: application/octet-stream
@@ -92,6 +140,7 @@ jobs:
   build-macos:
     name: Build for macOS
     runs-on: macos-latest
+    needs: create-release
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -135,23 +184,21 @@ jobs:
           path: moviestream-macos-arm64
 
       - name: Upload macOS Intel to Release
-        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./moviestream-macos-amd64
           asset_name: moviestream-macos-amd64
           asset_content_type: application/octet-stream
 
       - name: Upload macOS ARM64 to Release
-        if: github.event_name == 'release'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./moviestream-macos-arm64
           asset_name: moviestream-macos-arm64
           asset_content_type: application/octet-stream
