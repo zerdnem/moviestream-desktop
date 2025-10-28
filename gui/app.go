@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	"moviestream-gui/api"
@@ -667,26 +668,26 @@ func watchMovie(movie api.Movie) {
 	go func() {
 		streamInfo, err := api.GetStreamURL(movie.ID, "movie", 0, 0)
 		
-		// Always hide progress
-		fyne.Do(func() {
-			progress.Hide()
-		})
+	// Always hide progress
+	fyne.Do(func() {
+		progress.Hide()
+	})
 
-		if err != nil {
-			errorMsg := fmt.Sprintf("Failed to get stream:\n%v\n\nTips:\n• This movie might not be available on this platform\n• Try a different, more popular movie\n• Some older or less common titles may not work", err)
-			dialog.ShowError(fmt.Errorf(errorMsg), currentWindow)
-			return
-		}
+	if err != nil {
+		errorMsg := fmt.Sprintf("Failed to get stream:\n%v\n\nTips:\n• This movie might not be available on this platform\n• Try a different, more popular movie\n• Some older or less common titles may not work", err)
+		dialog.ShowError(errors.New(errorMsg), currentWindow)
+		return
+	}
 
-		// Extract subtitle URLs
-		var subtitleURLs []string
-		for _, sub := range streamInfo.SubtitleURLs {
-			subtitleURLs = append(subtitleURLs, sub.URL)
-		}
+	// Extract subtitle URLs
+	var subtitleURLs []string
+	for _, sub := range streamInfo.SubtitleURLs {
+		subtitleURLs = append(subtitleURLs, sub.URL)
+	}
 
-		// Create callback for queue auto-play
-		onEndCallback := func() {
-			playNextInQueue()
+	// Create callback for queue auto-play
+	onEndCallback := func() {
+		playNextInQueue()
 		}
 
 		// Check if subtitles are available
@@ -740,26 +741,26 @@ func watchMovieWithAudioTracks(movie api.Movie) {
 	go func() {
 		streamInfo, err := api.GetStreamURL(movie.ID, "movie", 0, 0)
 		
-		// Always hide progress
-		fyne.Do(func() {
-			progress.Hide()
-		})
+	// Always hide progress
+	fyne.Do(func() {
+		progress.Hide()
+	})
 
-		if err != nil {
-			errorMsg := fmt.Sprintf("Failed to get stream:\n%v\n\nTips:\n• This movie might not be available on this platform\n• Try a different, more popular movie\n• Some older or less common titles may not work", err)
-			dialog.ShowError(fmt.Errorf(errorMsg), currentWindow)
-			return
-		}
+	if err != nil {
+		errorMsg := fmt.Sprintf("Failed to get stream:\n%v\n\nTips:\n• This movie might not be available on this platform\n• Try a different, more popular movie\n• Some older or less common titles may not work", err)
+		dialog.ShowError(errors.New(errorMsg), currentWindow)
+		return
+	}
 
-		// Extract subtitle URLs
-		var subtitleURLs []string
-		for _, sub := range streamInfo.SubtitleURLs {
-			subtitleURLs = append(subtitleURLs, sub.URL)
-		}
+	// Extract subtitle URLs
+	var subtitleURLs []string
+	for _, sub := range streamInfo.SubtitleURLs {
+		subtitleURLs = append(subtitleURLs, sub.URL)
+	}
 
-		// Create callback for queue auto-play
-		onEndCallback := func() {
-			playNextInQueue()
+	// Create callback for queue auto-play
+	onEndCallback := func() {
+		playNextInQueue()
 		}
 
 		// Show audio track dialog with available tracks from API
