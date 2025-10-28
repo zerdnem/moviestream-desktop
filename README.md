@@ -144,17 +144,34 @@ moviestream-gui/
 
 ## Building for Distribution
 
-### Windows
+### Automated Builds (GitHub Actions)
+
+This project includes GitHub Actions workflow for automated builds. When you create a new release on GitHub, it will automatically build binaries for:
+- Windows (amd64)
+- Linux (amd64)
+- macOS (amd64 and arm64)
+
+**To create a release with automatic builds:**
+1. Go to your GitHub repository
+2. Click on "Releases" → "Create a new release"
+3. Create a new tag (e.g., `v1.0.0`)
+4. Fill in the release title and description
+5. Click "Publish release"
+6. The binaries will be automatically built and attached to the release
+
+### Manual Builds
+
+#### Windows
 ```bash
 go build -ldflags="-H windowsgui" -o moviestream.exe
 ```
 
-### macOS
+#### macOS
 ```bash
 go build -o moviestream
 ```
 
-### Linux
+#### Linux
 ```bash
 go build -o moviestream
 ```
