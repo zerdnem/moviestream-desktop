@@ -97,7 +97,7 @@ jobs:
         run: go build -ldflags="-H windowsgui -s -w" -o moviestream-windows-amd64.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: moviestream-windows-amd64
           path: moviestream-windows-amd64.exe
@@ -135,7 +135,7 @@ jobs:
         run: go build -ldflags="-s -w" -o moviestream-linux-amd64
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: moviestream-linux-amd64
           path: moviestream-linux-amd64
@@ -182,14 +182,14 @@ jobs:
         run: go build -ldflags="-s -w" -o moviestream-macos-arm64
 
       - name: Upload Intel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: moviestream-macos-amd64
           path: moviestream-macos-amd64
           retention-days: 7
 
       - name: Upload ARM64 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: moviestream-macos-arm64
           path: moviestream-macos-arm64
