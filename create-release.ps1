@@ -73,14 +73,14 @@ Write-Host "Pushing tag to remote..."
 git push origin $version
 
 Write-Host ""
-Write-Host "✓ Success!" -ForegroundColor Green
+Write-Host "[SUCCESS]" -ForegroundColor Green
 Write-Host ""
 Write-Host "Release tag created and pushed!"
 Write-Host ""
 Write-Host "GitHub Actions is now:"
-Write-Host "  → Creating the release"
-Write-Host "  → Building binaries for all platforms"
-Write-Host "  → Uploading binaries to the release"
+Write-Host "  -> Creating the release"
+Write-Host "  -> Building binaries for all platforms"
+Write-Host "  -> Uploading binaries to the release"
 Write-Host ""
 Write-Host "View progress at:"
 Write-Host "https://github.com/zerdnem/moviestream-desktop/actions" -ForegroundColor Yellow
