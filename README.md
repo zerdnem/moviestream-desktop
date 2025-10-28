@@ -1,5 +1,10 @@
 # MovieStream GUI
 
+[![CI/CD Pipeline](https://github.com/zerdnem/moviestream-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/zerdnem/moviestream-desktop/actions/workflows/ci.yml)
+[![Release](https://github.com/zerdnem/moviestream-desktop/actions/workflows/release.yml/badge.svg)](https://github.com/zerdnem/moviestream-desktop/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/zerdnem/moviestream-desktop)](https://goreportcard.com/report/github.com/zerdnem/moviestream-desktop)
+[![License](https://img.shields.io/badge/license-Educational-blue.svg)](LICENSE)
+
 A desktop application for searching and streaming movies and TV shows, built with Go and Fyne.
 
 ## Screenshots
@@ -142,11 +147,28 @@ moviestream-gui/
 - Run `go mod tidy` to ensure all dependencies are downloaded
 - Make sure you're using Go 1.19 or higher: `go version`
 
-## Building for Distribution
+## CI/CD Pipeline
 
-### Automated Builds (GitHub Actions)
+This project uses GitHub Actions for continuous integration and deployment:
 
-This project includes GitHub Actions workflow for automated builds. When you create a new release on GitHub, it will automatically build binaries for:
+### Continuous Integration (CI)
+- **Triggers:** Runs on every push and pull request to `master`, `main`, or `develop` branches
+- **Jobs:**
+  - **Lint:** Code quality checks using golangci-lint
+  - **Test:** Run unit tests with race detection and coverage
+  - **Build:** Compile binaries for Windows, Linux, and macOS
+  - **Security Scan:** Vulnerability scanning with Gosec
+- **Artifacts:** Build artifacts are available for 7 days after each build
+
+### Continuous Deployment (CD)
+- **Release Workflow:** Automatically triggered when you create a new release
+- **Outputs:** Pre-built binaries for all platforms attached to the release
+
+### Building for Distribution
+
+#### Automated Builds (GitHub Actions)
+
+When you create a new release on GitHub, it will automatically build binaries for:
 - Windows (amd64)
 - Linux (amd64)
 - macOS (amd64 and arm64)
